@@ -1,0 +1,384 @@
+// Prisma Schema for Shopify Marketing Automation AI
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Campaigns
+model Campaign {
+  id            String   @id @default(cuid())
+  platform      Platform @default(META)
+  name          String
+  status        CampaignStatus @default(DRAFT)
+  budget        Decimal  @db.Decimal(10, 2)
+  dailyBudget   Decimal? @db.Decimal(10, 2)
+  objective     String
+  targetAudience Json?   // Store targeting parameters as JSON
+  startDate     DateTime?
+  endDate       DateTime?
+  externalId    String?  // ID from platform (Meta/Google)
+  
+  // Performance metrics
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  spend         Decimal  @default(0) @db.Decimal(10, 2)
+  revenue       Decimal  @default(0) @db.Decimal(10, 2)
+  roas          Decimal? @db.Decimal(5, 2) // Return on Ad Spend
+  
+  // Relations
+  adSets        AdSet[]
+  approvals     Approval[]
+  metrics       CampaignMetric[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([platform, status])
+  @@index([externalId])
+  @@map("campaigns")
+}
+
+// Ad Sets (Meta) / Ad Groups (Google)
+model AdSet {
+  id            String   @id @default(cuid())
+  campaignId    String
+  name          String
+  status        CampaignStatus @default(DRAFT)
+  budget        Decimal  @db.Decimal(10, 2)
+  bidStrategy   String?
+  targeting     Json?    // Targeting parameters
+  externalId    String?
+  
+  // Relations
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ads           Ad[]
+  metrics       AdSetMetric[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([campaignId])
+  @@index([externalId])
+  @@map("ad_sets")
+}
+
+// Individual Ads
+model Ad {
+  id            String   @id @default(cuid())
+  adSetId       String
+  name          String
+  status        CampaignStatus @default(DRAFT)
+  creativeType  CreativeType
+  headline      String?
+  description   String?
+  primaryText   String?
+  callToAction  String?
+  imageUrl      String?
+  videoUrl      String?
+  landingPageUrl String?
+  externalId    String?
+  
+  // AI Generation metadata
+  aiGenerated   Boolean  @default(false)
+  aiModel       String?  // e.g., "gpt-4"
+  aiPrompt      String?
+  humanReviewed Boolean  @default(false)
+  
+  // Performance
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  spend         Decimal  @default(0) @db.Decimal(10, 2)
+  ctr           Decimal? @db.Decimal(5, 4) // Click-through rate
+  cpc           Decimal? @db.Decimal(10, 2) // Cost per click
+  
+  // Relations
+  adSet         AdSet    @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  metrics       AdMetric[]
+  abTests       ABTest[] @relation("TestAds")
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([adSetId])
+  @@index([status])
+  @@index([externalId])
+  @@map("ads")
+}
+
+// Performance Metrics (time-series data)
+model CampaignMetric {
+  id            String   @id @default(cuid())
+  campaignId    String
+  date          DateTime @db.Date
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  spend         Decimal  @default(0) @db.Decimal(10, 2)
+  revenue       Decimal  @default(0) @db.Decimal(10, 2)
+  
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([campaignId, date])
+  @@index([campaignId, date])
+  @@map("campaign_metrics")
+}
+
+model AdSetMetric {
+  id            String   @id @default(cuid())
+  adSetId       String
+  date          DateTime @db.Date
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  spend         Decimal  @default(0) @db.Decimal(10, 2)
+  revenue       Decimal  @default(0) @db.Decimal(10, 2)
+  
+  adSet         AdSet    @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([adSetId, date])
+  @@index([adSetId, date])
+  @@map("ad_set_metrics")
+}
+
+model AdMetric {
+  id            String   @id @default(cuid())
+  adId          String
+  date          DateTime @db.Date
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  spend         Decimal  @default(0) @db.Decimal(10, 2)
+  revenue       Decimal  @default(0) @db.Decimal(10, 2)
+  
+  ad            Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([adId, date])
+  @@index([adId, date])
+  @@map("ad_metrics")
+}
+
+// Approval Workflows
+model Approval {
+  id            String   @id @default(cuid())
+  type         ApprovalType
+  status        ApprovalStatus @default(PENDING)
+  entityType    String   // "campaign", "ad", "budget_change", etc.
+  entityId      String
+  campaignId    String?
+  
+  // Request details
+  requestedBy   String?  // User/system identifier
+  requestedAt   DateTime @default(now())
+  requestData   Json     // Details of what needs approval
+  
+  // Approval details
+  approvedBy    String?
+  approvedAt    DateTime?
+  rejectedBy    String?
+  rejectedAt    DateTime?
+  rejectionReason String?
+  
+  // Relations
+  campaign      Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([status])
+  @@index([type])
+  @@index([campaignId])
+  @@map("approvals")
+}
+
+// A/B Tests
+model ABTest {
+  id            String   @id @default(cuid())
+  name          String
+  status        ABTestStatus @default(RUNNING)
+  startDate     DateTime
+  endDate       DateTime?
+  trafficSplit  Int      @default(50) // Percentage for variant A
+  
+  // Results
+  variantAWinner Boolean?
+  confidence     Decimal? @db.Decimal(5, 4) // Statistical confidence
+  notes          String?
+  
+  // Relations
+  ads           Ad[]     @relation("TestAds")
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("ab_tests")
+}
+
+// Automation Rules
+model AutomationRule {
+  id            String   @id @default(cuid())
+  name          String
+  enabled       Boolean  @default(true)
+  triggerType   TriggerType
+  conditions    Json     // Conditions that trigger the rule
+  actions       Json     // Actions to take when triggered
+  priority      Int      @default(0)
+  
+  // Execution tracking
+  lastTriggered DateTime?
+  triggerCount  Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("automation_rules")
+}
+
+// Generated Content (AI)
+model GeneratedContent {
+  id            String   @id @default(cuid())
+  type          ContentType
+  platform      Platform?
+  prompt        String
+  model         String   // AI model used
+  content       String   // Generated content
+  metadata      Json?    // Additional metadata
+  status        ContentStatus @default(DRAFT)
+  
+  // Usage tracking
+  usedInAdId    String?
+  usedInEmailId String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([type])
+  @@index([status])
+  @@map("generated_content")
+}
+
+// Email Campaigns
+model EmailCampaign {
+  id            String   @id @default(cuid())
+  name          String
+  status        CampaignStatus @default(DRAFT)
+  subject       String
+  body          String
+  listId        String?  // Email list ID
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  
+  // Performance
+  sent          Int      @default(0)
+  delivered     Int      @default(0)
+  opened        Int      @default(0)
+  clicked       Int      @default(0)
+  unsubscribed  Int      @default(0)
+  
+  // AI Generation
+  aiGenerated   Boolean  @default(false)
+  generatedContentId String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("email_campaigns")
+}
+
+// Audit Log
+model AuditLog {
+  id            String   @id @default(cuid())
+  action        String
+  entityType    String
+  entityId      String?
+  userId        String?
+  changes       Json?    // Before/after changes
+  metadata      Json?
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Enums
+enum Platform {
+  META
+  GOOGLE_ADS
+  EMAIL
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  PAUSED
+  ARCHIVED
+  DELETED
+}
+
+enum CreativeType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  COLLECTION
+}
+
+enum ApprovalType {
+  CAMPAIGN_CREATION
+  BUDGET_INCREASE
+  BUDGET_DECREASE
+  CAMPAIGN_PAUSE
+  CAMPAIGN_DELETE
+  AD_CREATION
+  CONTENT_GENERATION
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum ABTestStatus {
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum TriggerType {
+  PERFORMANCE_THRESHOLD
+  BUDGET_LIMIT
+  TIME_BASED
+  MANUAL
+}
+
+enum ContentType {
+  AD_COPY
+  PRODUCT_DESCRIPTION
+  EMAIL_SUBJECT
+  EMAIL_BODY
+  SOCIAL_POST
+}
+
+enum ContentStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+  USED
+}
+
