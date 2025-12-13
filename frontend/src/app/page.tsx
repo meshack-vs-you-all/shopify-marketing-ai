@@ -1,6 +1,20 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
 import Link from 'next/link';
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/campaigns');
+    }
+  }, [isAuthenticated, router]);
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
@@ -12,16 +26,10 @@ export default function Home() {
         </p>
         <div className="flex gap-4 justify-center">
           <Link
-            href="/campaigns"
+            href="/login"
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
-            View Campaigns
-          </Link>
-          <Link
-            href="/campaigns/new"
-            className="px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition"
-          >
-            Create Campaign
+            Sign In
           </Link>
         </div>
       </div>

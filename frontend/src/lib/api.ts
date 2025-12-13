@@ -1,23 +1,24 @@
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
 
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': API_KEY,
   },
 });
 
-// Request interceptor for auth
+// Request interceptor for auth - dynamically get API key
 apiClient.interceptors.request.use(
   (config) => {
-    // Add API key to all requests
-    if (API_KEY) {
-      config.headers['x-api-key'] = API_KEY;
+    // Get API key from localStorage (client-side only)
+    if (typeof window !== 'undefined') {
+      const apiKey = localStorage.getItem('api_key');
+      if (apiKey) {
+        config.headers['x-api-key'] = apiKey;
+      }
     }
     return config;
   },
@@ -31,8 +32,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login or show error
-      console.error('Unauthorized - check API key');
+      // Handle unauthorized - clear API key and redirect
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('api_key');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -40,7 +44,7 @@ apiClient.interceptors.response.use(
 
 // API methods
 export const api = {
-  // Health check
+  // Health check (no auth required)
   health: () => apiClient.get('/health'),
 
   // Campaigns
@@ -74,4 +78,3 @@ export const api = {
 };
 
 export default apiClient;
-
