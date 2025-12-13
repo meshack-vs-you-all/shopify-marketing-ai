@@ -42,12 +42,9 @@ class AIService {
       
       const fullPrompt = `You are an expert copywriter specializing in high-converting ad copy for e-commerce. Generate compelling, action-oriented ad copy that drives clicks and conversions.\n\n${prompt}`;
       
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 1000,
-        },
+      const result = await model.generateContent(fullPrompt, {
+        temperature: 0.8,
+        maxOutputTokens: 1000,
       });
 
       const content = result.response.text() || '';
@@ -89,12 +86,9 @@ Requirements:
       
       const fullPrompt = `You are an expert e-commerce copywriter specializing in product descriptions that convert visitors into customers.\n\n${prompt}`;
       
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 500,
-        },
+      const result = await model.generateContent(fullPrompt, {
+        temperature: 0.7,
+        maxOutputTokens: 500,
       });
 
       return result.response.text() || '';
@@ -120,12 +114,9 @@ Requirements:
       
       const fullPrompt = `You are an expert email marketer. Generate compelling subject lines that maximize open rates.\n\n${prompt}`;
       
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 300,
-        },
+      const result = await model.generateContent(fullPrompt, {
+        temperature: 0.9,
+        maxOutputTokens: 300,
       });
 
       const content = result.response.text() || '';
@@ -155,12 +146,9 @@ Requirements:
       
       const fullPrompt = `You are an expert email copywriter. Write engaging, conversion-focused email content.\n\n${prompt}`;
       
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 800,
-        },
+      const result = await model.generateContent(fullPrompt, {
+        temperature: 0.8,
+        maxOutputTokens: 800,
       });
 
       return result.response.text() || '';
@@ -205,12 +193,9 @@ Provide:
       
       const fullPrompt = `You are a marketing analytics expert. Provide data-driven recommendations for campaign optimization.\n\n${prompt}`;
       
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 1000,
-        },
+      const result = await model.generateContent(fullPrompt, {
+        temperature: 0.6,
+        maxOutputTokens: 1000,
       });
 
       const content = result.response.text() || '';
