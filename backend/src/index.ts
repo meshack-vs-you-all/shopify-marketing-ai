@@ -5,10 +5,14 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { validateEnv } from './config/validateEnv';
 import apiRoutes from './api/routes';
 
 // Load environment variables
 dotenv.config();
+
+// Validate environment variables before starting
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
