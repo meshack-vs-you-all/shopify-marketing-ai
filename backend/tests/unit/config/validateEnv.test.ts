@@ -16,7 +16,7 @@ describe('Environment Validation', () => {
     process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
     process.env.API_KEY = 'test-api-key';
     process.env.SHOPIFY_ACCESS_TOKEN = 'test-token';
-    process.env.OPENAI_API_KEY = 'test-openai-key';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
 
     // Should not throw
     expect(() => validateEnv()).not.toThrow();
@@ -26,7 +26,7 @@ describe('Environment Validation', () => {
     delete process.env.DATABASE_URL;
     process.env.API_KEY = 'test-api-key';
     process.env.SHOPIFY_ACCESS_TOKEN = 'test-token';
-    process.env.OPENAI_API_KEY = 'test-openai-key';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
 
     // Mock process.exit to prevent actual exit
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
@@ -41,7 +41,7 @@ describe('Environment Validation', () => {
     process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
     delete process.env.API_KEY;
     process.env.SHOPIFY_ACCESS_TOKEN = 'test-token';
-    process.env.OPENAI_API_KEY = 'test-openai-key';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
 
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit called');
@@ -55,7 +55,7 @@ describe('Environment Validation', () => {
     process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
     process.env.API_KEY = 'test-api-key';
     process.env.SHOPIFY_ACCESS_TOKEN = 'test-token';
-    process.env.OPENAI_API_KEY = 'test-openai-key';
+    process.env.GEMINI_API_KEY = 'test-gemini-key';
     delete process.env.REDIS_URL;
 
     // Should not throw and use default REDIS_URL

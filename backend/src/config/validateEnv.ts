@@ -44,8 +44,8 @@ const envSchema = z.object({
   KLAVIYO_API_KEY: z.string().optional(),
   KLAVIYO_LIST_ID: z.string().optional(),
 
-  // OpenAI
-  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required for AI features'),
+  // Google Gemini
+  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required for AI features'),
 
   // Feature Flags
   ENABLE_AI_CONTENT_GENERATION: z.string().transform((val) => val === 'true').default('true'),

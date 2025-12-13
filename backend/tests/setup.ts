@@ -9,7 +9,7 @@ process.env.API_KEY = 'test-api-key';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test_db';
 process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 process.env.SHOPIFY_ACCESS_TOKEN = 'test-token';
-process.env.OPENAI_API_KEY = 'test-openai-key';
+process.env.GEMINI_API_KEY = 'test-gemini-key';
 
 // Mock console methods to reduce noise in tests
 global.console = {

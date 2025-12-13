@@ -1,26 +1,23 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from '../utils/logger';
 
 /**
  * AI Content Generation Service
- * Uses OpenAI GPT-4 to generate marketing content
+ * Uses Google Gemini to generate marketing content
  */
 class AIService {
-  private client: OpenAI;
-  private model: string = 'gpt-4-turbo-preview';
+  private genAI: GoogleGenerativeAI;
+  private model: string = 'gemini-pro';
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
-      logger.warn('OpenAI API key not configured');
+      logger.warn('Gemini API key not configured');
       return;
     }
 
-    this.client = new OpenAI({
-      apiKey,
-      organization: process.env.OPENAI_ORG_ID,
-    });
+    this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
   /**
@@ -41,23 +38,19 @@ class AIService {
     try {
       const prompt = this.buildAdCopyPrompt(params);
 
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert copywriter specializing in high-converting ad copy for e-commerce. Generate compelling, action-oriented ad copy that drives clicks and conversions.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.8,
-        max_tokens: 1000,
+      const model = this.genAI.getGenerativeModel({ model: this.model });
+      
+      const fullPrompt = `You are an expert copywriter specializing in high-converting ad copy for e-commerce. Generate compelling, action-oriented ad copy that drives clicks and conversions.\n\n${prompt}`;
+      
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 1000,
+        },
       });
 
-      const content = response.choices[0]?.message?.content || '';
+      const content = result.response.text() || '';
       return this.parseAdCopyResponse(content, params.numberOfVariations || 3);
     } catch (error: any) {
       logger.error('Error generating ad copy', { error: error.message, params });
@@ -92,23 +85,19 @@ Requirements:
 - Make it scannable with short paragraphs
 - Include a clear call-to-action`;
 
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert e-commerce copywriter specializing in product descriptions that convert visitors into customers.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
+      const model = this.genAI.getGenerativeModel({ model: this.model });
+      
+      const fullPrompt = `You are an expert e-commerce copywriter specializing in product descriptions that convert visitors into customers.\n\n${prompt}`;
+      
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 500,
+        },
       });
 
-      return response.choices[0]?.message?.content || '';
+      return result.response.text() || '';
     } catch (error: any) {
       logger.error('Error generating product description', { error: error.message, params });
       throw new Error(`Failed to generate product description: ${error.message}`);
@@ -127,23 +116,19 @@ Requirements:
     try {
       const prompt = this.buildEmailSubjectPrompt(params);
 
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert email marketer. Generate compelling subject lines that maximize open rates.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.9,
-        max_tokens: 300,
+      const model = this.genAI.getGenerativeModel({ model: this.model });
+      
+      const fullPrompt = `You are an expert email marketer. Generate compelling subject lines that maximize open rates.\n\n${prompt}`;
+      
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 300,
+        },
       });
 
-      const content = response.choices[0]?.message?.content || '';
+      const content = result.response.text() || '';
       return this.parseListResponse(content, params.numberOfVariations || 5);
     } catch (error: any) {
       logger.error('Error generating email subject lines', { error: error.message, params });
@@ -166,23 +151,19 @@ Requirements:
     try {
       const prompt = this.buildEmailBodyPrompt(params);
 
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert email copywriter. Write engaging, conversion-focused email content.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.8,
-        max_tokens: 800,
+      const model = this.genAI.getGenerativeModel({ model: this.model });
+      
+      const fullPrompt = `You are an expert email copywriter. Write engaging, conversion-focused email content.\n\n${prompt}`;
+      
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 800,
+        },
       });
 
-      return response.choices[0]?.message?.content || '';
+      return result.response.text() || '';
     } catch (error: any) {
       logger.error('Error generating email body', { error: error.message, params });
       throw new Error(`Failed to generate email body: ${error.message}`);
@@ -220,23 +201,19 @@ Provide:
 2. 3-5 specific recommendations
 3. Suggested actions (e.g., "increase budget by 20%", "pause underperforming ads", "test new creative")`;
 
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a marketing analytics expert. Provide data-driven recommendations for campaign optimization.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.6,
-        max_tokens: 1000,
+      const model = this.genAI.getGenerativeModel({ model: this.model });
+      
+      const fullPrompt = `You are a marketing analytics expert. Provide data-driven recommendations for campaign optimization.\n\n${prompt}`;
+      
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 1000,
+        },
       });
 
-      const content = response.choices[0]?.message?.content || '';
+      const content = result.response.text() || '';
       return this.parseAnalysisResponse(content);
     } catch (error: any) {
       logger.error('Error analyzing performance', { error: error.message, params });
