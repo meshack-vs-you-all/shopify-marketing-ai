@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { campaignService } from '../services/campaign.service';
 import { prisma } from '../config/database';
 import { CampaignStatus } from '@prisma/client';
+import './email.worker'; // Import email worker to start it
 
 // Initialize Redis connection
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {

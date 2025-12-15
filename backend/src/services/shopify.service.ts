@@ -114,6 +114,28 @@ class ShopifyService {
   }
 
   /**
+   * Get all collections
+   */
+  async getCollections(): Promise<any[]> {
+    try {
+      const response = await this.client.get({
+        path: 'custom_collections',
+      });
+      const customCollections = response.body.custom_collections || [];
+
+      const smartResponse = await this.client.get({
+        path: 'smart_collections',
+      });
+      const smartCollections = smartResponse.body.smart_collections || [];
+
+      return [...customCollections, ...smartCollections];
+    } catch (error: any) {
+      logger.error('Error fetching collections from Shopify', { error: error.message });
+      throw new Error(`Failed to fetch collections: ${error.message}`);
+    }
+  }
+
+  /**
    * Get store analytics data
    */
   async getStoreAnalytics(): Promise<any> {

@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { authenticate } from '../middleware/auth';
 import campaignsRoutes from './campaigns.routes';
 import approvalsRoutes from './approvals.routes';
+import emailCampaignsRoutes from './email-campaigns.routes';
 
 const router = Router();
 
@@ -13,6 +14,7 @@ router.get('/health', (_req, res) => {
 
 // All API routes require authentication
 router.use('/campaigns', authenticate, campaignsRoutes);
+router.use('/email-campaigns', authenticate, emailCampaignsRoutes);
 router.use('/approvals', authenticate, approvalsRoutes);
 
 // Analytics endpoint (placeholder)

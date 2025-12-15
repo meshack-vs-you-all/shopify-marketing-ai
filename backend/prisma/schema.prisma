@@ -269,23 +269,64 @@ model GeneratedContent {
   @@map("generated_content")
 }
 
+// Email Lists
+model EmailList {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  subscribers Subscriber[]
+  campaigns   EmailCampaign[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_lists")
+}
+
+// Subscribers
+model Subscriber {
+  id          String   @id @default(cuid())
+  email       String
+  firstName   String?
+  lastName    String?
+  status      SubscriberStatus @default(SUBSCRIBED)
+  listId      String
+
+  // Relations
+  list        EmailList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  deliveryLogs EmailDeliveryLog[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([email, listId])
+  @@index([listId])
+  @@map("subscribers")
+}
+
 // Email Campaigns
 model EmailCampaign {
   id            String   @id @default(cuid())
   name          String
   status        CampaignStatus @default(DRAFT)
   subject       String
-  body          String
-  listId        String?  // Email list ID
+  htmlContent   String?  @db.Text
+  textContent   String?  @db.Text
+
+  listId        String
   scheduledAt   DateTime?
   sentAt        DateTime?
   
+  // Relations
+  emailList     EmailList @relation(fields: [listId], references: [id])
+  deliveryLogs  EmailDeliveryLog[]
+
   // Performance
-  sent          Int      @default(0)
-  delivered     Int      @default(0)
-  opened        Int      @default(0)
-  clicked       Int      @default(0)
-  unsubscribed  Int      @default(0)
+  sentCount     Int      @default(0)
+  deliveredCount Int     @default(0)
+  openCount     Int      @default(0)
+  clickCount    Int      @default(0)
+  failedCount   Int      @default(0)
   
   // AI Generation
   aiGenerated   Boolean  @default(false)
@@ -295,6 +336,43 @@ model EmailCampaign {
   updatedAt     DateTime @updatedAt
   
   @@map("email_campaigns")
+}
+
+// Email Delivery Logs
+model EmailDeliveryLog {
+  id            String   @id @default(cuid())
+  campaignId    String
+  subscriberId  String
+  status        DeliveryStatus
+  messageId     String?
+  errorMessage  String?
+  sentAt        DateTime @default(now())
+  openedAt      DateTime?
+  clickedAt     DateTime?
+
+  // Relations
+  campaign      EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subscriber    Subscriber    @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([subscriberId])
+  @@map("email_delivery_logs")
+}
+
+enum SubscriberStatus {
+  SUBSCRIBED
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+  OPENED
+  CLICKED
 }
 
 // Audit Log
@@ -324,10 +402,14 @@ enum Platform {
 enum CampaignStatus {
   DRAFT
   PENDING
+  SCHEDULED
+  SENDING
   ACTIVE
   PAUSED
+  COMPLETED
   ARCHIVED
   DELETED
+  FAILED
 }
 
 enum CreativeType {
