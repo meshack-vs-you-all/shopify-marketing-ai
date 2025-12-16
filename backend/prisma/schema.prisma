@@ -265,7 +265,7 @@ model GeneratedContent {
   updatedAt     DateTime @updatedAt
   
   @@index([type])
-  @@index([type])
+
   @@map("generated_content")
 }
 
@@ -456,6 +456,16 @@ enum ContentType {
   EMAIL_SUBJECT
   EMAIL_BODY
   SOCIAL_POST
+}
+
+enum ContentStatus {
+  DRAFT
+  GENERATED
+  REVIEWED
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
 }
 
 
