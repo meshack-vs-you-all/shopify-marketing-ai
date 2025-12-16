@@ -13,12 +13,9 @@ const apiClient = axios.create({
 // Request interceptor for auth - dynamically get API key
 apiClient.interceptors.request.use(
   (config) => {
-    // Get API key from localStorage (client-side only)
-    if (typeof window !== 'undefined') {
-      const apiKey = localStorage.getItem('api_key');
-      if (apiKey) {
-        config.headers['x-api-key'] = apiKey;
-      }
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
@@ -44,35 +41,53 @@ apiClient.interceptors.response.use(
 
 // API methods
 export const api = {
+  // Auth
+  register: (data: any) => apiClient.post('/auth/register', data),
+  login: (data: any) => apiClient.post('/auth/login', data),
+
   // Health check (no auth required)
   health: () => apiClient.get('/health'),
 
-  // Campaigns
+  // Email Marketing
+  getLists: () => apiClient.get('/api/email-campaigns/lists'),
+  createList: (data: any) => apiClient.post('/api/email-campaigns/lists', data),
+  importSubscribers: (listId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post(`/api/email-campaigns/lists/${listId}/import`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  createEmailCampaign: (data: any) => apiClient.post('/api/email-campaigns', data),
+  sendEmailCampaign: (id: string) => apiClient.post(`/api/email-campaigns/${id}/send`),
+
   getCampaigns: (params?: { platform?: string; status?: string; limit?: number; offset?: number }) =>
     apiClient.get('/api/campaigns', { params }),
-  
+
   getCampaign: (id: string) =>
     apiClient.get(`/api/campaigns/${id}`),
-  
+
   createCampaign: (data: any) =>
     apiClient.post('/api/campaigns', data),
-  
+
   getCampaignMetrics: (id: string) =>
     apiClient.get(`/api/campaigns/${id}/metrics`),
-  
+
   optimizeCampaign: (id: string) =>
     apiClient.post(`/api/campaigns/${id}/optimize`),
-  
+
   deployCampaign: (id: string) =>
     apiClient.post(`/api/campaigns/${id}/deploy`),
 
   // Approvals
   getApprovals: () =>
     apiClient.get('/api/approvals'),
-  
+
   approveRequest: (id: string, data: { approvedBy: string }) =>
     apiClient.post(`/api/approvals/${id}/approve`, data),
-  
+
   rejectRequest: (id: string, data: { rejectedBy: string; reason: string }) =>
     apiClient.post(`/api/approvals/${id}/reject`, data),
 };
