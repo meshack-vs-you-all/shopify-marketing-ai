@@ -1,26 +1,19 @@
+import { parse } from 'csv-parse';
+import fs from 'fs';
 import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
 import { CampaignStatus, DeliveryStatus, SubscriberStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
-
-// Queue for email sending jobs
-const emailQueue = new Queue('email-sending', {
-  connection: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379'
-  }
-});
-
-interface CreateListParams {
-  name: string;
-  description?: string;
-}
 
 interface AddSubscriberParams {
   email: string;
   firstName?: string;
   lastName?: string;
   listId: string;
+  importSource?: string;
 }
+
+// ...
 
 interface CreateCampaignParams {
   name: string;
@@ -84,6 +77,38 @@ class EmailCampaignService {
   async getSubscribers(listId: string) {
     return prisma.subscriber.findMany({
       where: { listId }
+    });
+  }
+
+  async importSubscribersFromCsv(listId: string, filePath: string) {
+    const results: any[] = [];
+    return new Promise((resolve, reject) => {
+      fs.createReadStream(filePath)
+        .pipe(parse({ columns: true, trim: true }))
+        .on('data', (data) => results.push(data))
+        .on('error', (error) => reject(error))
+        .on('end', async () => {
+          let count = 0;
+          try {
+            for (const row of results) {
+              if (row.email) {
+                await this.addSubscriber({
+                  email: row.email,
+                  firstName: row.firstName || row.first_name,
+                  lastName: row.lastName || row.last_name,
+                  listId,
+                  importSource: 'csv'
+                });
+                count++;
+              }
+            }
+            // Clean up file
+            fs.unlinkSync(filePath);
+            resolve({ count });
+          } catch (err) {
+            reject(err);
+          }
+        });
     });
   }
 

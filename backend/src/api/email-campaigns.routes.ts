@@ -3,6 +3,9 @@ import { emailCampaignService } from '../services/email-campaign.service';
 import { aiService } from '../services/ai.service';
 import { shopifyService } from '../services/shopify.service';
 import { logger } from '../utils/logger';
+import multer from 'multer';
+
+const upload = multer({ dest: 'uploads/' });
 
 const router = Router();
 
@@ -35,6 +38,16 @@ router.post('/lists/:listId/subscribers', async (req, res) => {
       listId: req.params.listId
     });
     res.json(subscriber);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/lists/:listId/import', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) throw new Error('No file uploaded');
+    const result = await emailCampaignService.importSubscribersFromCsv(req.params.listId, req.file.path);
+    res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
