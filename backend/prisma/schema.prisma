@@ -265,7 +265,7 @@ model GeneratedContent {
   updatedAt     DateTime @updatedAt
   
   @@index([type])
-  @@index([status])
+  @@index([type])
   @@map("generated_content")
 }
 
@@ -291,6 +291,7 @@ model Subscriber {
   lastName    String?
   status      SubscriberStatus @default(SUBSCRIBED)
   listId      String
+  importSource String?  // "manual", "csv", "api", "shopify"
 
   // Relations
   list        EmailList @relation(fields: [listId], references: [id], onDelete: Cascade)
@@ -457,10 +458,27 @@ enum ContentType {
   SOCIAL_POST
 }
 
-enum ContentStatus {
-  DRAFT
-  APPROVED
-  REJECTED
-  USED
+
+// ... (Auth)
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  role          UserRole  @default(ADMIN)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
 }
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+// ... (existing Enums)
 

@@ -1,61 +1,43 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { AppError } from './errorHandler';
 import { logger } from '../utils/logger';
 
-/**
- * API Key Authentication Middleware
- * Validates API key from request header
- */
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
+
 export const authenticate = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Get API key from header
-    const apiKey = req.headers['x-api-key'] as string;
+    const authHeader = req.headers.authorization;
 
-    if (!apiKey) {
-      throw new AppError('API key is required. Please provide x-api-key header.', 401, 'UNAUTHORIZED');
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new AppError('No token provided', 401, 'UNAUTHORIZED');
     }
 
-    // Get expected API key from environment
-    const expectedApiKey = process.env.API_KEY;
+    const token = authHeader.split(' ')[1];
 
-    if (!expectedApiKey) {
-      logger.error('API_KEY environment variable not set');
-      throw new AppError('Server configuration error', 500, 'CONFIG_ERROR');
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+      (req as any).user = { userId: decoded.userId };
+      next();
+    } catch (err) {
+      throw new AppError('Invalid token', 401, 'UNAUTHORIZED');
     }
-
-    // Validate API key
-    if (apiKey !== expectedApiKey) {
-      logger.warn('Invalid API key attempt', { ip: req.ip });
-      throw new AppError('Invalid API key', 401, 'UNAUTHORIZED');
-    }
-
-    // Add user info to request (for future multi-user support)
-    (req as any).user = {
-      apiKey,
-      authenticated: true,
-    };
-
-    next();
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Optional authentication - doesn't fail if no API key provided
- * Useful for public endpoints that can work with or without auth
- */
 export const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
-  const apiKey = req.headers['x-api-key'] as string;
-  const expectedApiKey = process.env.API_KEY;
-
-  if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
-    (req as any).user = {
-      apiKey,
-      authenticated: true,
-    };
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+      (req as any).user = { userId: decoded.userId };
+    }
+  } catch (err) {
+    // Ignore invalid tokens for optional auth
   }
-
   next();
 };
 
