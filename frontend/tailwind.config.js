@@ -8,31 +8,36 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Luxury brand colors for Glowify (baby products)
-        primary: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444',
-          600: '#dc2626',
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
+        // Nature-inspired palettes
+        cream: {
+          50: '#FFFFFF',
+          100: '#FDFBF7', // Main background
+          200: '#F7F3EB',
+          300: '#E8E4DB',
+          400: '#D6D1C7',
+          500: '#A8A29A',
+          900: '#1A1C19', // Dark mode bg
         },
-        // Soft, caring colors
+        // Modern Green (Growth/Money/Nature)
+        primary: {
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#4ADE80',
+          500: '#22C55E',
+          600: '#16A34A',
+          700: '#15803D',
+          800: '#166534',
+          900: '#14532D',
+        },
+        // Accent for actions
         accent: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#F5F3FF',
+          100: '#EDE9FE',
+          500: '#8B5CF6',
+          600: '#7C3AED',
+          700: '#6D28D9',
         },
       },
       fontFamily: {
