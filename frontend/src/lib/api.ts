@@ -51,6 +51,8 @@ export const api = {
   // Email Marketing
   getLists: () => apiClient.get('/api/email-campaigns/lists'),
   createList: (data: any) => apiClient.post('/api/email-campaigns/lists', data),
+  deleteList: (listId: string) => apiClient.delete(`/api/email-campaigns/lists/${listId}`),
+  getSubscribers: (listId: string) => apiClient.get(`/api/email-campaigns/lists/${listId}/subscribers`),
   importSubscribers: (listId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -60,6 +62,7 @@ export const api = {
       },
     });
   },
+  getEmailCampaigns: () => apiClient.get('/api/email-campaigns'),
   createEmailCampaign: (data: any) => apiClient.post('/api/email-campaigns', data),
   sendEmailCampaign: (id: string) => apiClient.post(`/api/email-campaigns/${id}/send`),
 

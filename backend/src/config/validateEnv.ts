@@ -21,10 +21,10 @@ const envSchema = z.object({
   API_KEY: z.string().min(1, 'API_KEY is required for authentication'),
 
   // Shopify
-  SHOPIFY_STORE_URL: z.string().min(1, 'SHOPIFY_STORE_URL is required'),
+  SHOPIFY_STORE_URL: z.string().optional(),
   SHOPIFY_API_KEY: z.string().optional(),
   SHOPIFY_API_SECRET: z.string().optional(),
-  SHOPIFY_ACCESS_TOKEN: z.string().min(1, 'SHOPIFY_ACCESS_TOKEN is required'),
+  SHOPIFY_ACCESS_TOKEN: z.string().optional(),
 
   // Meta (Facebook/Instagram Ads)
   META_APP_ID: z.string().optional(),
@@ -45,7 +45,7 @@ const envSchema = z.object({
   KLAVIYO_LIST_ID: z.string().optional(),
 
   // Google Gemini
-  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required for AI features'),
+  GEMINI_API_KEY: z.string().optional(),
 
   // Feature Flags
   ENABLE_AI_CONTENT_GENERATION: z.string().transform((val) => val === 'true').default('true'),

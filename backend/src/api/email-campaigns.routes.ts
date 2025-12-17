@@ -3,11 +3,15 @@ import { emailCampaignService } from '../services/email-campaign.service';
 import { aiService } from '../services/ai.service';
 import { shopifyService } from '../services/shopify.service';
 import { logger } from '../utils/logger';
+import { authenticate } from '../middleware/auth';
 import multer from 'multer';
 
 const upload = multer({ dest: 'uploads/' });
 
 const router = Router();
+
+// Apply authentication to all email campaign routes
+router.use(authenticate);
 
 // --- Lists ---
 
@@ -24,6 +28,15 @@ router.post('/lists', async (req, res) => {
   try {
     const list = await emailCampaignService.createList(req.body);
     res.json(list);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/lists/:listId', async (req, res) => {
+  try {
+    await emailCampaignService.deleteList(req.params.listId);
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

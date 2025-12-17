@@ -5,6 +5,14 @@ import { logger } from '../utils/logger';
 import { CampaignStatus, DeliveryStatus, SubscriberStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 
+// Email queue for background job processing
+const emailQueue = new Queue('email-campaigns', {
+  connection: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379')
+  }
+});
+
 interface AddSubscriberParams {
   email: string;
   firstName?: string;
@@ -13,7 +21,11 @@ interface AddSubscriberParams {
   importSource?: string;
 }
 
-// ...
+interface CreateListParams {
+  name: string;
+  description?: string;
+}
+
 
 interface CreateCampaignParams {
   name: string;
@@ -45,6 +57,12 @@ class EmailCampaignService {
           select: { subscribers: true }
         }
       }
+    });
+  }
+
+  async deleteList(listId: string) {
+    return prisma.emailList.delete({
+      where: { id: listId }
     });
   }
 

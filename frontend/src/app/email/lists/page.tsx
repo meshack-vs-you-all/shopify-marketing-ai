@@ -60,6 +60,18 @@ export default function ListsPage() {
         }
     };
 
+    const handleDelete = async (listId: string, listName: string) => {
+        if (!confirm(`Are you sure you want to delete "${listName}"? This will also delete all subscribers in this list.`)) {
+            return;
+        }
+        try {
+            await api.deleteList(listId);
+            loadLists();
+        } catch (err) {
+            alert('Failed to delete list');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-gray-900">Audience Lists</h1>
@@ -110,7 +122,7 @@ export default function ListsPage() {
                                 <p className="mt-1 text-sm text-gray-500 truncate">{list.description || 'No description'}</p>
                             </div>
 
-                            <div className="mt-6">
+                            <div className="mt-6 space-y-2">
                                 {showImport === list.id ? (
                                     <div className="space-y-2">
                                         <p className="text-xs text-gray-500">Select CSV File (email, firstName, lastName)</p>
@@ -136,6 +148,12 @@ export default function ListsPage() {
                                         Import CSV
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => handleDelete(list.id, list.name)}
+                                    className="w-full inline-flex justify-center items-center px-4 py-2 border border-red-200 shadow-sm text-sm font-medium rounded-md text-red-600 bg-white hover:bg-red-50"
+                                >
+                                    Delete List
+                                </button>
                             </div>
                         </div>
                     </div>

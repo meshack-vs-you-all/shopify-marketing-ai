@@ -5,6 +5,24 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { PlusIcon, UserGroupIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
+interface EmailCampaign {
+    id: string;
+    name: string;
+    subject: string;
+    status: string;
+    sentAt?: string;
+    sentCount: number;
+    openCount: number;
+    deliveredCount: number;
+    emailList?: { name: string };
+}
+
+interface EmailList {
+    id: string;
+    name: string;
+    _count?: { subscribers: number };
+}
+
 export default function EmailDashboard() {
     const [stats, setStats] = useState({
         subscribers: 0,
@@ -12,28 +30,39 @@ export default function EmailDashboard() {
         sent: 0,
         openRate: 0,
     });
+    const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadStats();
+        loadData();
     }, []);
 
-    const loadStats = async () => {
+    const loadData = async () => {
         try {
-            // In a real app we'd have a specific stats endpoint, 
-            // for now we'll fetch lists and campaigns to aggregate
             const [listsRes, campaignsRes] = await Promise.all([
-                api.getCampaigns(), // We might need to filter for 'email' type if unified
-                api.getCampaigns()  // Placeholder until we have specific list endpoints exposed in api.ts
+                api.getLists(),
+                api.getEmailCampaigns()
             ]);
 
-            // Mocking stats for the UI demo since we just built the backend
+            const lists: EmailList[] = listsRes.data;
+            const emailCampaigns: EmailCampaign[] = campaignsRes.data;
+
+            // Calculate real stats
+            const totalSubscribers = lists.reduce((sum, list) => sum + (list._count?.subscribers || 0), 0);
+            const sentCampaigns = emailCampaigns.filter(c => c.status !== 'DRAFT');
+            const totalSent = emailCampaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
+            const totalOpened = emailCampaigns.reduce((sum, c) => sum + (c.openCount || 0), 0);
+            const totalDelivered = emailCampaigns.reduce((sum, c) => sum + (c.deliveredCount || 0), 0);
+            const avgOpenRate = totalDelivered > 0 ? ((totalOpened / totalDelivered) * 100) : 0;
+
             setStats({
-                subscribers: 1250, // Mock
-                campaigns: 5,
-                sent: 12000,
-                openRate: 42.5
+                subscribers: totalSubscribers,
+                campaigns: sentCampaigns.length,
+                sent: totalSent,
+                openRate: Math.round(avgOpenRate * 10) / 10
             });
+
+            setCampaigns(emailCampaigns.slice(0, 5));
         } catch (error) {
             console.error('Failed to load stats', error);
         } finally {
@@ -41,10 +70,25 @@ export default function EmailDashboard() {
         }
     };
 
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return 'Not sent';
+        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'COMPLETED': return 'bg-green-100 text-green-800';
+            case 'SENDING': return 'bg-blue-100 text-blue-800';
+            case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+            case 'FAILED': return 'bg-red-100 text-red-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">Email Marketing</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Email Marketing</h1>
                 <div className="flex space-x-3">
                     <Link
                         href="/email/lists"
@@ -70,31 +114,43 @@ export default function EmailDashboard() {
                 <StatCard title="Avg. Open Rate" value={`${stats.openRate}%`} icon={ChartIcon} color="bg-purple-500" />
             </div>
 
-            {/* Recent Campaigns (Placeholder) */}
+            {/* Recent Campaigns */}
             <div className="bg-white shadow rounded-lg overflow-hidden border border-cream-200">
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                     <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Campaigns</h3>
                 </div>
-                <ul className="divide-y divide-gray-200">
-                    {[1, 2, 3].map((i) => (
-                        <li key={i} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center justify-between">
-                                <div className="flex flex-col">
-                                    <p className="text-sm font-medium text-primary-600 truncate">Weekly Newsletter #{i}</p>
-                                    <p className="text-sm text-gray-500">Sent on Dec {10 + i}, 2024</p>
-                                </div>
-                                <div className="flex items-center space-x-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        Sent
-                                    </span>
-                                    <div className="text-sm text-gray-500">
-                                        Open Rate: <span className="font-semibold text-gray-900">45%</span>
+                {loading ? (
+                    <div className="px-4 py-8 text-center text-gray-500">Loading...</div>
+                ) : campaigns.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-gray-500">
+                        No campaigns yet. <Link href="/email/new" className="text-primary-600 hover:underline">Create your first newsletter</Link>
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-gray-200">
+                        {campaigns.map((campaign) => (
+                            <li key={campaign.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <p className="text-sm font-medium text-primary-600 truncate">{campaign.subject}</p>
+                                        <p className="text-sm text-gray-500">{formatDate(campaign.sentAt)} · {campaign.emailList?.name || 'Unknown list'}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-4">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                                            {campaign.status}
+                                        </span>
+                                        {campaign.deliveredCount > 0 && (
+                                            <div className="text-sm text-gray-500">
+                                                Open Rate: <span className="font-semibold text-gray-900">
+                                                    {Math.round((campaign.openCount / campaign.deliveredCount) * 100)}%
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
         </div>
     );
