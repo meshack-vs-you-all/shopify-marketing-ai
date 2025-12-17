@@ -1,4 +1,38 @@
+# ============================================
+# SECURITY - Credential & Secret Files
+# ============================================
+# Local credentials file
+.credentials.local
+.credentials
+
+# General secrets
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+
+# AWS credentials
+*access-key*
+*secret*
+aws-credentials*
+credentials*.csv
+.aws/
+
+# Password and token files
+*password*
+*token*
+
+# API keys
+*api-key*
+*apikey*
+
+# Zone identifiers (Windows metadata)
+*:Zone.Identifier
+
+# ============================================
 # Dependencies
+# ============================================
 node_modules/
 .pnp
 .pnp.js
