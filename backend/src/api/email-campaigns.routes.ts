@@ -13,6 +13,15 @@ const router = Router();
 // Apply authentication to all email campaign routes
 router.use(authenticate);
 
+router.get('/dashboard-stats', async (req, res) => {
+  try {
+    const stats = await emailCampaignService.getDashboardMetrics();
+    res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- Lists ---
 
 router.get('/lists', async (req, res) => {
@@ -132,38 +141,68 @@ router.post('/generate', async (req, res) => {
     const {
       type, // 'subject' | 'body'
       productId,
-      campaignType, // 'promotional', 'newsletter', etc.
+      campaignType,
       tone,
-      discount
+      discount,
+      model,
+      customPrompt,
+      context
     } = req.body;
 
-    let productDetails = {};
+    let productDetails: any = {};
     if (productId) {
-      productDetails = await shopifyService.getProduct(productId);
+      try {
+        productDetails = await shopifyService.getProduct(productId);
+      } catch (err) {
+        logger.warn(`Could not fetch product ${productId}`, err);
+      }
     }
+
+    // Merge product details with request body, allowing explicit body params to override
+    const params = {
+      emailType: campaignType || 'newsletter',
+      productName: productDetails.title || req.body.productName,
+      productDescription: productDetails.body_html || req.body.productDescription,
+      discount,
+      tone,
+      model,
+      customPrompt,
+      context,
+      customerName: req.body.customerName,
+      subject: req.body.subject, // Required for 'body' generation
+    };
 
     let result;
     if (type === 'subject') {
-      result = await aiService.generateEmailSubjectLines({
-        emailType: campaignType || 'promotional',
-        productName: (productDetails as any).title,
-        discount,
-        numberOfVariations: 5
-      });
-    } else if (type === 'body') {
-      result = await aiService.generateEmailBody({
-        emailType: campaignType || 'promotional',
-        subject: req.body.subject || 'Special Offer',
-        productName: (productDetails as any).title,
-        productDescription: (productDetails as any).body_html?.replace(/<[^>]*>?/gm, ''),
-        discount,
-        tone
-      });
+      result = await aiService.generateEmailSubjectLines(params);
+    } else {
+      result = await aiService.generateEmailBody(params as any);
     }
 
     res.json({ result });
   } catch (error: any) {
-    logger.error('Error generating email content', { error: error.message });
+    logger.error('Failed to generate content', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/generate-image', async (req, res) => {
+  try {
+    const { prompt, aspectRatio, model } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    const imageUrl = await aiService.generateImage({
+      prompt,
+      aspectRatio,
+      model
+    });
+
+    res.json({ imageUrl });
+  } catch (error: any) {
+    logger.error('Failed to generate image', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -181,6 +220,50 @@ router.get('/shopify/collections', async (req, res) => {
   try {
     const collections = await shopifyService.getCollections();
     res.json(collections);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- System & SMTP Verification ---
+
+router.get('/verify-connection', async (req, res) => {
+  try {
+    const { emailService } = require('../services/email.service');
+    const status = await emailService.verifyConnection();
+    res.json(status);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/test-smtp', async (req, res) => {
+  try {
+    const { email, dryRun } = req.body;
+    const { emailService } = require('../services/email.service');
+
+    // First verify connection
+    const connectionStatus = await emailService.verifyConnection();
+
+    // Attempt to send a test email
+    const result = await emailService.sendMarketingEmail({
+      to: email || (req as any).user?.email || 'test@example.com',
+      subject: 'Test Email - Shopify Marketing AI',
+      htmlBody: `
+        <h1>Test Email</h1>
+        <p>This is a test email from your Shopify Marketing AI instance.</p>
+        <p><strong>Connection Status:</strong></p>
+        <pre>${JSON.stringify(connectionStatus, null, 2)}</pre>
+        <p>Use this to verify that your SMTP or SES settings are correct.</p>
+      `,
+      textBody: 'Test Email - Connection Status: ' + JSON.stringify(connectionStatus),
+      dryRun: dryRun === true
+    });
+
+    res.json({
+      connection: connectionStatus,
+      sendResult: result
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

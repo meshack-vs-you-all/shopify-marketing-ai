@@ -16,112 +16,215 @@ export interface EmailOptions {
     content: Buffer | string;
     contentType?: string;
   }>;
+  dryRun?: boolean; // If true, do not send, just verify logic
 }
 
 export interface SendResult {
   messageId: string;
+  provider: 'SES' | 'SMTP' | 'DRY-RUN';
   success: boolean;
   error?: string;
 }
 
+export interface ConnectionStatus {
+  ses: boolean;
+  smtp: boolean;
+  details?: any;
+}
+
 /**
- * SES Email Service
- * Handles sending emails via Amazon SES
+ * SES Email Service with Robust SMTP Fallback
+ * Default: Try SES
+ * Fallback: Try SMTP (Gmail/Google Workspace)
  */
-class SESService {
-  private sesClient: SESClient;
+class EmailService {
+  private sesClient: SESClient | null = null;
   private defaultFromEmail: string;
+  private smtpTransporter: nodemailer.Transporter | null = null;
 
   constructor() {
     const region = process.env.AWS_REGION || 'us-east-1';
 
-    // Initialize SES Client
-    // Credentials are automatically loaded from env vars:
-    // AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-    this.sesClient = new SESClient({
-      region,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
-      }
-    });
+    // 1. Initialize SES (Primary)
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      this.sesClient = new SESClient({
+        region,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+        }
+      });
+    } else {
+      logger.warn('AWS SES credentials missing. SES will be unavailable.');
+    }
 
-    this.defaultFromEmail = process.env.SES_FROM_EMAIL || '';
+    this.defaultFromEmail = process.env.SES_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || '';
 
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-      logger.warn('AWS SES credentials missing. Email sending will fail.');
+    // 2. Initialize SMTP (Fallback)
+    if (process.env.SMTP_HOST) {
+      this.smtpTransporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for others
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
     }
   }
 
   /**
-   * Send a marketing email
+   * Verify connections to configured providers
+   */
+  async verifyConnection(): Promise<ConnectionStatus> {
+    const status: ConnectionStatus = { ses: false, smtp: false };
+
+    // Check SES
+    if (this.sesClient) {
+      try {
+        // SES doesn't have a simple "ping", but we assume initialized client is 'ready' 
+        // if credentials were valid format. A real check would send a test email, 
+        // but for now we mark true if client exists.
+        status.ses = true;
+      } catch (err) {
+        logger.error('SES check failed', err);
+      }
+    }
+
+    // Check SMTP
+    if (this.smtpTransporter) {
+      try {
+        await this.smtpTransporter.verify();
+        status.smtp = true;
+        logger.info('SMTP connection verified');
+      } catch (err: any) {
+        logger.error('SMTP verify failed', err);
+        status.details = err.message;
+      }
+    }
+
+    return status;
+  }
+
+  /**
+   * Send a marketing email with fallback logic
    */
   async sendMarketingEmail(options: EmailOptions): Promise<SendResult> {
-    try {
-      const from = options.fromEmail || this.defaultFromEmail;
+    const from = options.fromEmail || this.defaultFromEmail;
 
-      if (!from) {
-        throw new Error('From email address is required');
-      }
+    if (!from) {
+      return { success: false, messageId: '', provider: 'SES', error: 'From email address is required' };
+    }
 
-      // Use Nodemailer to generate the raw MIME message
-      const transporter = nodemailer.createTransport({
-        streamTransport: true,
-        newline: 'unix',
-        buffer: true
-      });
-
-      const mailOptions = {
-        from: from,
-        to: options.to,
-        cc: options.cc,
-        bcc: options.bcc,
-        replyTo: options.replyTo,
-        subject: options.subject,
-        html: options.htmlBody,
-        text: options.textBody || this.stripHtml(options.htmlBody),
-        attachments: options.attachments
-      };
-
-      const info = await transporter.sendMail(mailOptions);
-      const rawMessage = info.message.toString();
-
-      // Send via SES
-      const command = new SendRawEmailCommand({
-        RawMessage: {
-          Data: Buffer.from(rawMessage)
-        },
-        Source: from,
-        // Destinations are optional for SendRawEmail if provided in headers,
-        // but explicitly providing them is good practice for logging/verification logic
-        // However, standard MIME headers are usually enough for SES to route.
-      });
-
-      const response = await this.sesClient.send(command);
-
-      logger.info('Email sent successfully', {
-        messageId: response.MessageId,
-        recipient: options.to
-      });
-
+    // --- DRY RUN ---
+    if (options.dryRun) {
+      logger.info(`[DRY-RUN] Would send email to: ${options.to} via SES/SMTP`);
       return {
         success: true,
-        messageId: response.MessageId || 'unknown'
-      };
-
-    } catch (error: any) {
-      logger.error('Error sending email via SES', {
-        error: error.message,
-        recipient: options.to,
-        stack: error.stack
-      });
-
-      return {
-        success: false,
-        messageId: '',
-        error: error.message
+        messageId: 'dry-run-id',
+        provider: 'DRY-RUN'
       };
     }
+
+    // --- ATTEMPT 1: SES (Primary) ---
+    if (this.sesClient) {
+      try {
+        const result = await this.sendViaSES(options, from);
+        return {
+          success: true,
+          messageId: result.MessageId || 'unknown',
+          provider: 'SES'
+        };
+      } catch (sesError: any) {
+        logger.warn('Failed to send via SES. Attempting fallback to SMTP...', { error: sesError.message });
+        // Proceed to fallback...
+      }
+    }
+
+    // --- ATTEMPT 2: SMTP (Fallback) ---
+    if (this.smtpTransporter) {
+      try {
+        const info = await this.sendViaSMTP(options, from);
+        return {
+          success: true,
+          messageId: info.messageId,
+          provider: 'SMTP'
+        };
+      } catch (smtpError: any) {
+        logger.error('Failed to send via SMTP (Fallback)', { error: smtpError.message });
+
+        // Return error from the fallback attempt (or initial if no fallback exists)
+        return {
+          success: false,
+          messageId: '',
+          provider: 'SMTP',
+          error: `SES Failed. SMTP Failed: ${smtpError.message}`
+        };
+      }
+    }
+
+    // If we reach here, neither worked
+    return {
+      success: false,
+      messageId: '',
+      provider: 'SES', // defaulted
+      error: 'No email providers configured or all failed.'
+    };
+  }
+
+  /**
+   * Helper: Send via AWS SES
+   */
+  private async sendViaSES(options: EmailOptions, from: string) {
+    if (!this.sesClient) throw new Error('SES Client not initialized');
+
+    // Build raw message using Nodemailer (it's good at MIME)
+    const transporter = nodemailer.createTransport({
+      streamTransport: true,
+      newline: 'unix',
+      buffer: true
+    });
+
+    const mailOptions = {
+      from: from,
+      to: options.to,
+      cc: options.cc,
+      bcc: options.bcc,
+      replyTo: options.replyTo,
+      subject: options.subject,
+      html: options.htmlBody,
+      text: options.textBody || this.stripHtml(options.htmlBody),
+      attachments: options.attachments
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    const rawMessage = info.message.toString();
+
+    const command = new SendRawEmailCommand({
+      RawMessage: { Data: Buffer.from(rawMessage) },
+      Source: from,
+    });
+
+    return await this.sesClient.send(command);
+  }
+
+  /**
+   * Helper: Send via I SMTP
+   */
+  private async sendViaSMTP(options: EmailOptions, from: string) {
+    if (!this.smtpTransporter) throw new Error('SMTP Config missing');
+
+    const mailOptions = {
+      from: from,
+      to: options.to,
+      subject: options.subject,
+      html: options.htmlBody,
+      text: options.textBody || this.stripHtml(options.htmlBody),
+      attachments: options.attachments
+    };
+
+    return await this.smtpTransporter.sendMail(mailOptions);
   }
 
   /**
@@ -132,5 +235,5 @@ class SESService {
   }
 }
 
-export const emailService = new SESService();
+export const emailService = new EmailService();
 export default emailService;

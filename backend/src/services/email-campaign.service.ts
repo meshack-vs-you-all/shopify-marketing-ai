@@ -217,6 +217,38 @@ class EmailCampaignService {
       clickRate: campaign.openCount > 0 ? (campaign.clickCount / campaign.openCount) * 100 : 0
     };
   }
+
+  /**
+   * Get global dashboard metrics
+   */
+  async getDashboardMetrics() {
+    const campaigns = await prisma.emailCampaign.findMany();
+
+    const totalSent = campaigns.reduce((acc, c) => acc + c.sentCount, 0);
+    const totalDelivered = campaigns.reduce((acc, c) => acc + c.deliveredCount, 0);
+    const totalOpened = campaigns.reduce((acc, c) => acc + c.openCount, 0);
+    const totalClicked = campaigns.reduce((acc, c) => acc + c.clickCount, 0);
+
+    // Calculate Rates
+    const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
+    const openRate = totalDelivered > 0 ? (totalOpened / totalDelivered) * 100 : 0;
+    const clickRate = totalOpened > 0 ? (totalClicked / totalOpened) * 100 : 0;
+
+    return {
+      overview: {
+        totalCampaigns: campaigns.length,
+        totalSent,
+        avgDeliveryRate: parseFloat(deliveryRate.toFixed(2)),
+        avgOpenRate: parseFloat(openRate.toFixed(2)),
+        avgClickRate: parseFloat(clickRate.toFixed(2)),
+      },
+      recentCampaigns: await prisma.emailCampaign.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { emailList: true }
+      })
+    };
+  }
 }
 
 export const emailCampaignService = new EmailCampaignService();
