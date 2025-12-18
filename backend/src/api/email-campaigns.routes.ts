@@ -186,6 +186,26 @@ router.post('/generate', async (req, res) => {
   }
 });
 
+router.post('/generate-ad-copy', async (req, res) => {
+  try {
+    const result = await aiService.generateAdCopy(req.body);
+    res.json(result);
+  } catch (error: any) {
+    logger.error('Failed to generate ad copy', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/generate-product-description', async (req, res) => {
+  try {
+    const result = await aiService.generateProductDescription(req.body);
+    res.json({ result });
+  } catch (error: any) {
+    logger.error('Failed to generate product description', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/generate-image', async (req, res) => {
   try {
     const { prompt, aspectRatio, model } = req.body;

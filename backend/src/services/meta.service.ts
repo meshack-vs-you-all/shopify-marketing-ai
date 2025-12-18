@@ -30,7 +30,7 @@ class MetaService {
   }): Promise<any> {
     try {
       const url = `${this.baseUrl}/${this.apiVersion}/${this.adAccountId}/campaigns`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -45,7 +45,7 @@ class MetaService {
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.error) {
         throw new Error(data.error.message);
@@ -75,7 +75,7 @@ class MetaService {
   }): Promise<any> {
     try {
       const url = `${this.baseUrl}/${this.apiVersion}/${this.adAccountId}/adsets`;
-      
+
       const body: any = {
         access_token: this.accessToken,
         campaign_id: params.campaignId,
@@ -104,7 +104,7 @@ class MetaService {
         body: JSON.stringify(body),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.error) {
         throw new Error(data.error.message);
@@ -127,7 +127,7 @@ class MetaService {
   }): Promise<any> {
     try {
       const url = `${this.baseUrl}/${this.apiVersion}/${this.adAccountId}/adcreatives`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -140,7 +140,7 @@ class MetaService {
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.error) {
         throw new Error(data.error.message);
@@ -165,7 +165,7 @@ class MetaService {
   }): Promise<any> {
     try {
       const url = `${this.baseUrl}/${this.apiVersion}/${this.adAccountId}/ads`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -180,7 +180,7 @@ class MetaService {
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.error) {
         throw new Error(data.error.message);
@@ -200,7 +200,7 @@ class MetaService {
   async getCampaignInsights(campaignId: string, dateRange?: { since: string; until: string }): Promise<any> {
     try {
       let url = `${this.baseUrl}/${this.apiVersion}/${campaignId}/insights`;
-      
+
       const params = new URLSearchParams({
         access_token: this.accessToken,
         fields: 'impressions,clicks,spend,actions,ctr,cpc,cpp',
@@ -217,7 +217,7 @@ class MetaService {
       url += `?${params.toString()}`;
 
       const response = await fetch(url);
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.error) {
         throw new Error(data.error.message);
@@ -236,7 +236,7 @@ class MetaService {
   async updateCampaignStatus(campaignId: string, status: 'ACTIVE' | 'PAUSED'): Promise<boolean> {
     try {
       const url = `${this.baseUrl}/${this.apiVersion}/${campaignId}`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -248,7 +248,7 @@ class MetaService {
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.error) {
         throw new Error(data.error.message);
@@ -269,7 +269,7 @@ class MetaService {
     try {
       const url = `${this.baseUrl}/${this.apiVersion}/me?access_token=${this.accessToken}`;
       const response = await fetch(url);
-      const data = await response.json();
+      const data: any = await response.json();
       return !data.error;
     } catch (error) {
       logger.error('Meta connection test failed', { error });

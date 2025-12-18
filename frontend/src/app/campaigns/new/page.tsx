@@ -7,9 +7,10 @@ import { api } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { HelpTooltip } from '@/components/HelpTooltip';
 
 const campaignSchema = z.object({
-  platform: z.enum(['META', 'GOOGLE_ADS', 'EMAIL']),
+  platform: z.enum(['META', 'GOOGLE_ADS']),
   budget: z.number().positive(),
   dailyBudget: z.number().positive().optional(),
   objective: z.string().min(1, 'Objective is required'),
@@ -79,7 +80,6 @@ export default function NewCampaignPage() {
             >
               <option value="META">Meta (Facebook/Instagram)</option>
               <option value="GOOGLE_ADS">Google Ads</option>
-              <option value="EMAIL">Email Marketing</option>
             </select>
             {errors.platform && (
               <p className="mt-1 text-sm text-red-600">{errors.platform.message}</p>
@@ -143,8 +143,12 @@ export default function NewCampaignPage() {
               {...register('autoApprove')}
               className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
             />
-            <label className="ml-2 block text-sm text-gray-700">
-              Auto-approve and deploy immediately (skip approval workflow)
+            <label className="ml-2 block text-sm text-gray-700 flex items-center">
+              Auto-approve and deploy immediately
+              <HelpTooltip
+                className="ml-2"
+                content="If checked, the campaign will skip the approval workflow and be created on the platform immediately (usually in Paused status)."
+              />
             </label>
           </div>
 

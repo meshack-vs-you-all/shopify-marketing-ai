@@ -172,7 +172,7 @@ class CampaignService {
         name: `${campaign.name} - Ad Set 1`,
         dailyBudget: Number(campaign.dailyBudget || campaign.budget / 30),
         billingEvent: 'IMPRESSIONS',
-        optimizationGoal: 'OFFSITE_CONVERSIONS',
+        optimizationGoal: 'LINK_CLICKS', // Safer default than OFFSITE_CONVERSIONS (requires Pixel)
         targeting: campaign.targetAudience || {
           age_min: 18,
           age_max: 65,
@@ -204,7 +204,7 @@ class CampaignService {
           const creative = await metaService.createAdCreative({
             name: `${campaign.name} - Creative ${i + 1}`,
             objectStorySpec: {
-              page_id: process.env.META_PAGE_ID || '', // Need to set this
+              page_id: options?.pageId || process.env.META_PAGE_ID || '',
               link_data: {
                 message: descriptions[i] || '',
                 link: options.products?.[0]?.url || '',
@@ -278,7 +278,7 @@ class CampaignService {
       if (campaign.externalId) {
         if (campaign.platform === Platform.META) {
           const insights = await metaService.getCampaignInsights(campaign.externalId);
-          
+
           // Update database with latest metrics
           await this.updateCampaignMetrics(campaignId, {
             impressions: insights.impressions || 0,

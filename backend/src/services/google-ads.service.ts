@@ -44,14 +44,14 @@ class GoogleAdsService {
         }),
       });
 
-      const data = await response.json();
-      
+      const data: any = await response.json();
+
       if (data.error) {
         throw new Error(data.error);
       }
 
-      this.accessToken = data.access_token;
-      return this.accessToken;
+      this.accessToken = data.access_token || '';
+      return this.accessToken!;
     } catch (error: any) {
       logger.error('Error refreshing Google Ads token', { error: error.message });
       throw new Error(`Failed to refresh token: ${error.message}`);
@@ -83,7 +83,7 @@ class GoogleAdsService {
       // For production, use the official google-ads-api package
       // This is a placeholder structure
       logger.info('Google Ads campaign creation requested', { params });
-      
+
       // Example structure (actual implementation requires google-ads-api)
       const campaign = {
         name: params.name,
@@ -117,7 +117,7 @@ class GoogleAdsService {
     try {
       // Placeholder - implement with actual Google Ads API
       logger.info('Fetching Google Ads campaign metrics', { campaignId });
-      
+
       return {
         impressions: 0,
         clicks: 0,

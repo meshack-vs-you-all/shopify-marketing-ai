@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { validateEnv } from './config/validateEnv';
 import apiRoutes from './api/routes';
+import './workers/email.worker'; // Initialize email worker
 
 // Load environment variables
 dotenv.config();
@@ -20,7 +21,7 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
 }));
 

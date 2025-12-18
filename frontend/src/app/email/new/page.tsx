@@ -9,8 +9,39 @@ import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 export default function NewNewsletterPage() {
     const [lists, setLists] = useState<any[]>([]);
     const [submitting, setSubmitting] = useState(false);
+    const [generating, setGenerating] = useState<string | null>(null);
     const router = useRouter();
-    const { register, handleSubmit } = useForm();
+    const { register, handleSubmit, setValue, watch } = useForm();
+    const currentSubject = watch('subject');
+
+    const generateContent = async (type: 'subject' | 'body') => {
+        try {
+            setGenerating(type);
+            const selectedModel = localStorage.getItem('ai_model') || 'gemini-1.5-flash';
+            const res = await api.generateEmailContent({
+                type,
+                subject: currentSubject, // Pass subject for body generation context
+                campaignType: 'promotional', // Default for now
+                model: selectedModel
+            });
+
+            if (type === 'subject') {
+                // API returns array of variations, pick first or join
+                // checking structure from backend: { result: [strings] } for subject
+                const result = res.data.result;
+                const value = Array.isArray(result) ? result[0] : result;
+                setValue('subject', value);
+            } else {
+                // Backend returns string (HTML)
+                setValue('htmlContent', res.data.result);
+            }
+        } catch (err) {
+            alert('Failed to generate content');
+            console.error(err);
+        } finally {
+            setGenerating(null);
+        }
+    };
 
     useEffect(() => {
         loadLists();
@@ -89,7 +120,17 @@ export default function NewNewsletterPage() {
 
                             {/* Subject */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Subject Line</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-sm font-medium text-gray-700">Subject Line</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateContent('subject')}
+                                        disabled={generating === 'subject'}
+                                        className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1"
+                                    >
+                                        {generating === 'subject' ? 'Generating...' : '✨ Generate with AI'}
+                                    </button>
+                                </div>
                                 <input
                                     {...register('subject', { required: true })}
                                     type="text"
@@ -98,11 +139,21 @@ export default function NewNewsletterPage() {
                                 />
                             </div>
 
-                            {/* Body (Simple Textarea for now) */}
+                            {/* Body */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Email Content (HTML)
-                                </label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Email Content (HTML)
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateContent('body')}
+                                        disabled={generating === 'body'}
+                                        className="text-xs text-primary-600 hover:text-primary-800 flex items-center gap-1"
+                                    >
+                                        {generating === 'body' ? 'Generating...' : '✨ Generate with AI'}
+                                    </button>
+                                </div>
                                 <div className="mt-1">
                                     <textarea
                                         {...register('htmlContent', { required: true })}

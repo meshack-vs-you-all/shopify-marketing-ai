@@ -42,8 +42,8 @@ apiClient.interceptors.response.use(
 // API methods
 export const api = {
   // Auth
-  register: (data: any) => apiClient.post('/auth/register', data),
-  login: (data: any) => apiClient.post('/auth/login', data),
+  register: (data: any) => apiClient.post('/api/auth/register', data),
+  login: (data: any) => apiClient.post('/api/auth/login', data),
 
   // Health check (no auth required)
   health: () => apiClient.get('/health'),
@@ -53,6 +53,7 @@ export const api = {
   createList: (data: any) => apiClient.post('/api/email-campaigns/lists', data),
   deleteList: (listId: string) => apiClient.delete(`/api/email-campaigns/lists/${listId}`),
   getSubscribers: (listId: string) => apiClient.get(`/api/email-campaigns/lists/${listId}/subscribers`),
+  addSubscriber: (listId: string, data: any) => apiClient.post(`/api/email-campaigns/lists/${listId}/subscribers`, data),
   importSubscribers: (listId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -65,6 +66,11 @@ export const api = {
   getEmailCampaigns: () => apiClient.get('/api/email-campaigns'),
   createEmailCampaign: (data: any) => apiClient.post('/api/email-campaigns', data),
   sendEmailCampaign: (id: string) => apiClient.post(`/api/email-campaigns/${id}/send`),
+  getDashboardStats: () => apiClient.get('/api/email-campaigns/dashboard-stats'),
+  generateEmailContent: (data: any) => apiClient.post('/api/email-campaigns/generate', data),
+  generateAdCopy: (data: any) => apiClient.post('/api/email-campaigns/generate-ad-copy', data),
+  generateProductDescription: (data: any) => apiClient.post('/api/email-campaigns/generate-product-description', data),
+  generateImage: (data: any) => apiClient.post('/api/email-campaigns/generate-image', data),
 
   getCampaigns: (params?: { platform?: string; status?: string; limit?: number; offset?: number }) =>
     apiClient.get('/api/campaigns', { params }),

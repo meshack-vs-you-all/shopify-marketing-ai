@@ -30,11 +30,11 @@ class ShopifyService {
       isEmbeddedApp: false,
     });
 
-    this.client = shopify.clients.rest({
-      session: {
-        shop: this.storeUrl,
-        accessToken: this.accessToken,
-      },
+    const session = shopify.session.customAppSession(this.storeUrl);
+    session.accessToken = this.accessToken;
+
+    this.client = new shopify.clients.Rest({
+      session,
     });
   }
 
@@ -81,10 +81,10 @@ class ShopifyService {
       });
 
       const orders = ordersResponse.body.orders || [];
-      
+
       // Count product sales
       const productSales: Record<string, { product: any; sales: number }> = {};
-      
+
       orders.forEach((order: any) => {
         order.line_items?.forEach((item: any) => {
           const productId = item.product_id?.toString();
@@ -147,7 +147,7 @@ class ShopifyService {
       });
 
       const orders = ordersResponse.body.orders || [];
-      
+
       const analytics = {
         totalOrders: orders.length,
         totalRevenue: orders.reduce((sum: number, order: any) => sum + parseFloat(order.total_price || 0), 0),

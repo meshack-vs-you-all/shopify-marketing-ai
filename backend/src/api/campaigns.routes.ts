@@ -39,8 +39,8 @@ router.get('/', validateQuery(campaignQuerySchema), async (req, res, next) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: limit as number,
-      skip: offset as number,
+      take: limit ? Number(limit) : undefined,
+      skip: offset ? Number(offset) : undefined,
     });
 
     res.json({ campaigns, pagination: { limit, offset, total: campaigns.length } });

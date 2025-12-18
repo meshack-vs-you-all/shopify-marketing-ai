@@ -42,9 +42,10 @@ export default function SetupGuidePage() {
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <h4 className="font-semibold text-gray-900 mb-2">Default Login Credentials</h4>
               <p className="text-sm text-gray-600 mb-2">For local development, use:</p>
-              <code className="block bg-white px-3 py-2 rounded border border-gray-300 text-sm font-mono">
-                dev-api-key-change-in-production
-              </code>
+              <div className="bg-white px-3 py-2 rounded border border-gray-300 text-sm font-mono space-y-1">
+                <div>Email: admin@glowify.com</div>
+                <div>Password: password123</div>
+              </div>
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
@@ -67,9 +68,9 @@ export default function SetupGuidePage() {
           <div className="space-y-4">
             {[
               {
-                name: 'API_KEY',
-                description: 'Authentication key for API access. This is what you enter on the login page.',
-                example: 'dev-api-key-change-in-production',
+                name: 'JWT_SECRET',
+                description: 'Secret key for signing JSON Web Tokens. Change this in production.',
+                example: 'your-secure-jwt-secret-key',
                 required: true,
               },
               {
@@ -266,12 +267,12 @@ export default function SetupGuidePage() {
               {
                 step: 3,
                 title: 'Start the Application',
-                description: 'Start both backend and frontend servers. They should be running on ports 5000 and 3000 respectively.',
+                description: 'Start both backend and frontend servers. Frontend typically runs on port 3000 (or 3001 if 3000 is busy).',
               },
               {
                 step: 4,
                 title: 'Log In',
-                description: 'Navigate to http://localhost:3000/login and enter your API key to access the platform.',
+                description: 'Navigate to the frontend URL (e.g., http://localhost:3001/login) and log in with your credentials.',
               },
               {
                 step: 5,
@@ -304,8 +305,8 @@ export default function SetupGuidePage() {
           <div className="space-y-3">
             {[
               {
-                issue: 'Login fails with "Invalid API key"',
-                solution: 'Ensure the API_KEY in backend/.env matches what you enter on the login page. Restart the backend server after changing .env.',
+                issue: 'Login fails with "Invalid credentials"',
+                solution: 'Ensure you are using the correct email and password. Use "admin@glowify.com" / "password123" for local development.',
               },
               {
                 issue: 'Database connection errors',

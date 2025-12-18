@@ -10,9 +10,11 @@ import {
     EnvelopeIcon,
     ChartBarIcon,
     Cog6ToothIcon,
+    UserCircleIcon,
     Bars3Icon,
     XMarkIcon,
-    ArrowRightOnRectangleIcon
+    ArrowRightOnRectangleIcon,
+    SparklesIcon
 } from '@heroicons/react/24/outline';
 
 export default function Sidebar() {
@@ -21,8 +23,9 @@ export default function Sidebar() {
     const { user, logout } = useAuth();
 
     const navigation = [
-        { name: 'Dashboard', href: '/', icon: HomeIcon },
+        { name: 'Overview', href: '/dashboard', icon: HomeIcon },
         { name: 'Ad Campaigns', href: '/campaigns', icon: MegaphoneIcon },
+        { name: 'AI Studio', href: '/ai-studio', icon: SparklesIcon },
         { name: 'Email Marketing', href: '/email/dashboard', icon: EnvelopeIcon },
         { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
         { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
@@ -81,7 +84,7 @@ export default function Sidebar() {
                     {/* Navigation */}
                     <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                         {navigation.map((item) => {
-                            const isActive = pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/');
+                            const isActive = pathname.startsWith(item.href);
                             return (
                                 <Link
                                     key={item.name}

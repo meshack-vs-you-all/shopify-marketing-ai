@@ -2,11 +2,17 @@
 
 import { useAuth } from './AuthProvider';
 import Sidebar from './Sidebar';
+import { usePathname } from 'next/navigation';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const pathname = usePathname();
 
-  if (!isAuthenticated) {
+  // Define public paths where sidebar should NOT be shown even if authenticated
+  const publicPaths = ['/', '/login', '/signup', '/setup-guide'];
+  const isPublicPath = publicPaths.includes(pathname);
+
+  if (!isAuthenticated || isPublicPath) {
     return <main className="min-h-screen bg-cream-100">{children}</main>;
   }
 

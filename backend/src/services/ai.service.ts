@@ -6,14 +6,15 @@ import { logger } from '../utils/logger';
  * Uses Google Gemini to generate marketing content
  */
 class AIService {
-  private genAI: GoogleGenerativeAI;
-  private model: string = 'gemini-pro';
+  private genAI!: GoogleGenerativeAI;
+  private model: string = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
-    
+
     if (!apiKey) {
       logger.warn('Gemini API key not configured');
+      // @ts-ignore - Handle missing key gracefully in methods or ensure key exists
       return;
     }
 
@@ -30,6 +31,7 @@ class AIService {
     platform: 'meta' | 'google';
     tone?: 'professional' | 'casual' | 'luxury' | 'friendly';
     numberOfVariations?: number;
+    model?: string; // Allow override
   }): Promise<{
     headlines: string[];
     descriptions: string[];
@@ -38,14 +40,18 @@ class AIService {
     try {
       const prompt = this.buildAdCopyPrompt(params);
 
-      const model = this.genAI.getGenerativeModel({ model: this.model });
-      
+      // Use requested model or default
+      const modelName = params.model || this.model;
+      const model = this.genAI.getGenerativeModel({ model: modelName });
+
       const fullPrompt = `You are an expert copywriter specializing in high-converting ad copy for e-commerce. Generate compelling, action-oriented ad copy that drives clicks and conversions.\n\n${prompt}`;
-      
+
       const result = await model.generateContent(fullPrompt, {
-        temperature: 0.8,
-        maxOutputTokens: 1000,
-      });
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 1000,
+        }
+      } as any);
 
       const content = result.response.text() || '';
       return this.parseAdCopyResponse(content, params.numberOfVariations || 3);
@@ -83,13 +89,15 @@ Requirements:
 - Include a clear call-to-action`;
 
       const model = this.genAI.getGenerativeModel({ model: this.model });
-      
+
       const fullPrompt = `You are an expert e-commerce copywriter specializing in product descriptions that convert visitors into customers.\n\n${prompt}`;
-      
+
       const result = await model.generateContent(fullPrompt, {
-        temperature: 0.7,
-        maxOutputTokens: 500,
-      });
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 500,
+        }
+      } as any);
 
       return result.response.text() || '';
     } catch (error: any) {
@@ -106,18 +114,24 @@ Requirements:
     productName?: string;
     discount?: number;
     numberOfVariations?: number;
+    model?: string;
+    customPrompt?: string; // User provided custom instruction
+    context?: string; // User provided context (e.g. "Summer Sale")
   }): Promise<string[]> {
     try {
       const prompt = this.buildEmailSubjectPrompt(params);
 
-      const model = this.genAI.getGenerativeModel({ model: this.model });
-      
+      const modelName = params.model || this.model;
+      const model = this.genAI.getGenerativeModel({ model: modelName });
+
       const fullPrompt = `You are an expert email marketer. Generate compelling subject lines that maximize open rates.\n\n${prompt}`;
-      
+
       const result = await model.generateContent(fullPrompt, {
-        temperature: 0.9,
-        maxOutputTokens: 300,
-      });
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 300,
+        }
+      } as any);
 
       const content = result.response.text() || '';
       return this.parseListResponse(content, params.numberOfVariations || 5);
@@ -138,18 +152,24 @@ Requirements:
     discount?: number;
     customerName?: string;
     tone?: 'professional' | 'casual' | 'friendly';
+    model?: string;
+    customPrompt?: string;
+    context?: string;
   }): Promise<string> {
     try {
       const prompt = this.buildEmailBodyPrompt(params);
 
-      const model = this.genAI.getGenerativeModel({ model: this.model });
-      
+      const modelName = params.model || this.model;
+      const model = this.genAI.getGenerativeModel({ model: modelName });
+
       const fullPrompt = `You are an expert email copywriter. Write engaging, conversion-focused email content.\n\n${prompt}`;
-      
+
       const result = await model.generateContent(fullPrompt, {
-        temperature: 0.8,
-        maxOutputTokens: 800,
-      });
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 800,
+        }
+      } as any);
 
       return result.response.text() || '';
     } catch (error: any) {
@@ -190,19 +210,53 @@ Provide:
 3. Suggested actions (e.g., "increase budget by 20%", "pause underperforming ads", "test new creative")`;
 
       const model = this.genAI.getGenerativeModel({ model: this.model });
-      
+
       const fullPrompt = `You are a marketing analytics expert. Provide data-driven recommendations for campaign optimization.\n\n${prompt}`;
-      
+
       const result = await model.generateContent(fullPrompt, {
-        temperature: 0.6,
-        maxOutputTokens: 1000,
-      });
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 1000,
+        }
+      } as any);
 
       const content = result.response.text() || '';
       return this.parseAnalysisResponse(content);
     } catch (error: any) {
       logger.error('Error analyzing performance', { error: error.message, params });
       throw new Error(`Failed to analyze performance: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate Image (Experimental)
+   * Note: This requires a model that supports image generation (e.g., Imagen)
+   */
+  async generateImage(params: {
+    prompt: string;
+    aspectRatio?: '1:1' | '16:9' | '9:16';
+    model?: string;
+  }): Promise<string> {
+    try {
+      // NOTE: The current GoogleGenerativeAI SDK for Node.js is primarily for text/multimodal inputs -> text output.
+      // Image generation often requires specific REST calls to Imagen on Vertex AI or specific Gemini models.
+      // For now, we will attempt to use the model if configured, or return a placeholder explaining limitation.
+
+      // This is a placeholder implementation as standard Gemini API (free/paid tier via API key) 
+      // usually returns text. If the user has a specific model accessed via this SDK that returns images (unlikely directly as base64), 
+      // we might need a different approach.
+
+      // However, assuming we want to enable the UI for it:
+      return "DYNAMIC_IMAGE_GENERATION_NOT_YET_SUPPORTED_VIA_SDK_USE_PLACEHOLDER";
+
+      /* 
+      // Future implementation when SDK supports it or via REST:
+      const modelName = params.model || 'imagen-3.0-generate-001'; 
+      // ... call api ...
+      */
+    } catch (error: any) {
+      logger.error('Error generating image', { error: error.message, params });
+      throw new Error(`Failed to generate image: ${error.message}`);
     }
   }
 
@@ -226,25 +280,29 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
 
   private buildEmailSubjectPrompt(params: any): string {
     let prompt = `Generate ${params.numberOfVariations || 5} email subject lines for a ${params.emailType} email.`;
-    
+
+    if (params.context) prompt += `\nContext/Topic: ${params.context}`;
     if (params.productName) prompt += `\nProduct: ${params.productName}`;
     if (params.discount) prompt += `\nDiscount: ${params.discount}% off`;
-    
+    if (params.customPrompt) prompt += `\n\nCustom Instructions: ${params.customPrompt}`;
+
     prompt += '\n\nMake them compelling, personalized, and optimized for open rates. Return as a numbered list.';
-    
+
     return prompt;
   }
 
   private buildEmailBodyPrompt(params: any): string {
     let prompt = `Write an email body for a ${params.emailType} email.\n\nSubject: ${params.subject}\n`;
-    
+
+    if (params.context) prompt += `Context/Topic: ${params.context}\n`;
     if (params.customerName) prompt += `Recipient: ${params.customerName}\n`;
     if (params.productName) prompt += `Product: ${params.productName}\n`;
     if (params.productDescription) prompt += `Product Description: ${params.productDescription}\n`;
     if (params.discount) prompt += `Discount: ${params.discount}% off\n`;
-    
+    if (params.customPrompt) prompt += `\nCustom Instructions: ${params.customPrompt}\n`;
+
     prompt += `Tone: ${params.tone || 'friendly'}\n\nMake it engaging, conversion-focused, and include a clear call-to-action.`;
-    
+
     return prompt;
   }
 
@@ -255,12 +313,12 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      
+
       // Fallback: parse from text format
       const headlines: string[] = [];
       const descriptions: string[] = [];
       const callToActions: string[] = [];
-      
+
       // Simple parsing logic (can be improved)
       const lines = content.split('\n').filter(line => line.trim());
       lines.forEach(line => {
@@ -275,7 +333,7 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
           if (match) callToActions.push(match[1].trim());
         }
       });
-      
+
       return {
         headlines: headlines.slice(0, count),
         descriptions: descriptions.slice(0, count),
@@ -295,7 +353,7 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
   private parseListResponse(content: string, count: number): string[] {
     const items: string[] = [];
     const lines = content.split('\n').filter(line => line.trim());
-    
+
     lines.forEach(line => {
       // Match numbered lists (1., 2., etc.) or bullet points
       const match = line.match(/^[\d\-\*•]\s*(.+)/);
@@ -305,17 +363,17 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
         items.push(line.trim());
       }
     });
-    
+
     return items.slice(0, count);
   }
 
   private parseAnalysisResponse(content: string): any {
     const recommendations: string[] = [];
     const suggestedActions: string[] = [];
-    
+
     const lines = content.split('\n').filter(line => line.trim());
     let currentSection = '';
-    
+
     lines.forEach(line => {
       if (line.toLowerCase().includes('recommendation')) {
         currentSection = 'recommendations';
@@ -332,7 +390,7 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
         }
       }
     });
-    
+
     return {
       analysis: content.split('\n\n')[0] || content,
       recommendations: recommendations.length > 0 ? recommendations : ['Monitor performance closely', 'Test new creative variations'],
