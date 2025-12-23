@@ -14,7 +14,9 @@ import {
     Bars3Icon,
     XMarkIcon,
     ArrowRightOnRectangleIcon,
-    SparklesIcon
+    SparklesIcon,
+    UsersIcon,
+    PlusCircleIcon
 } from '@heroicons/react/24/outline';
 
 export default function Sidebar() {
@@ -23,9 +25,11 @@ export default function Sidebar() {
     const { user, logout } = useAuth();
 
     const navigation = [
+        { name: 'New Campaign', href: '/campaigns/wizard', icon: PlusCircleIcon },
         { name: 'Overview', href: '/dashboard', icon: HomeIcon },
         { name: 'Ad Campaigns', href: '/campaigns', icon: MegaphoneIcon },
         { name: 'AI Studio', href: '/ai-studio', icon: SparklesIcon },
+        { name: 'Audience Lists', href: '/email/lists', icon: UsersIcon },
         { name: 'Email Marketing', href: '/email/dashboard', icon: EnvelopeIcon },
         { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
         { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },

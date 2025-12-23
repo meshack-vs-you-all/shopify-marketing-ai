@@ -208,8 +208,10 @@ export default function AIStudioPage() {
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Configuration</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI Model</label>
+                                        <label htmlFor="aiModelSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI Model</label>
                                         <select
+                                            id="aiModelSelect"
+                                            name="aiModelSelect"
                                             className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3"
                                             value={formData.model}
                                             onChange={(e) => setFormData({ ...formData, model: e.target.value })}
@@ -273,8 +275,10 @@ export default function AIStudioPage() {
                             {/* EMAIL FORM */}
                             {activeTab === 'email' && (
                                 <div className="space-y-4">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Type</label>
+                                    <label htmlFor="emailTypeSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Type</label>
                                     <select
+                                        id="emailTypeSelect"
+                                        name="emailTypeSelect"
                                         className="w-full rounded-lg border-gray-300 p-2"
                                         value={formData.emailType}
                                         onChange={(e) => setFormData({ ...formData, emailType: e.target.value })}
@@ -285,14 +289,22 @@ export default function AIStudioPage() {
                                         <option value="welcome">Welcome Email</option>
                                         <option value="abandoned_cart">Abandoned Cart Recovery</option>
                                     </select>
+
+                                    <label htmlFor="emailContextInput" className="sr-only">Main Topic</label>
                                     <input
+                                        id="emailContextInput"
+                                        name="emailContextInput"
                                         type="text"
                                         placeholder="Main Topic / Context (e.g. Summer Sale)"
                                         className="w-full rounded-lg border-gray-300 p-3"
                                         value={formData.context}
                                         onChange={(e) => setFormData({ ...formData, context: e.target.value })}
                                     />
+
+                                    <label htmlFor="emailCustomPrompt" className="sr-only">Custom Instructions</label>
                                     <textarea
+                                        id="emailCustomPrompt"
+                                        name="emailCustomPrompt"
                                         rows={3}
                                         placeholder="Custom instructions..."
                                         className="w-full rounded-lg border-gray-300 p-3"
@@ -307,8 +319,10 @@ export default function AIStudioPage() {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Platform</label>
+                                            <label htmlFor="adPlatformSelect" className="block text-sm font-medium text-gray-700">Platform</label>
                                             <select
+                                                id="adPlatformSelect"
+                                                name="adPlatformSelect"
                                                 className="w-full rounded-lg border-gray-300 p-2"
                                                 value={formData.platform}
                                                 onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
@@ -318,8 +332,10 @@ export default function AIStudioPage() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Product Name</label>
+                                            <label htmlFor="adProductNameInput" className="block text-sm font-medium text-gray-700">Product Name</label>
                                             <input
+                                                id="adProductNameInput"
+                                                name="adProductNameInput"
                                                 type="text"
                                                 className="w-full rounded-lg border-gray-300 p-2"
                                                 value={formData.productName}
@@ -327,14 +343,22 @@ export default function AIStudioPage() {
                                             />
                                         </div>
                                     </div>
+
+                                    <label htmlFor="adProductDescription" className="sr-only">Product Description</label>
                                     <textarea
+                                        id="adProductDescription"
+                                        name="adProductDescription"
                                         rows={3}
                                         placeholder="Product Description..."
                                         className="w-full rounded-lg border-gray-300 p-3"
                                         value={formData.productDescription}
                                         onChange={(e) => setFormData({ ...formData, productDescription: e.target.value })}
                                     />
+
+                                    <label htmlFor="adTargetAudience" className="sr-only">Target Audience</label>
                                     <input
+                                        id="adTargetAudience"
+                                        name="adTargetAudience"
                                         type="text"
                                         placeholder="Target Audience (e.g. Busy moms, Tech enthusiasts)"
                                         className="w-full rounded-lg border-gray-300 p-3"
@@ -347,28 +371,43 @@ export default function AIStudioPage() {
                             {/* PRODUCT FORM */}
                             {activeTab === 'product' && (
                                 <div className="space-y-4">
+                                    <label htmlFor="prodNameInput" className="sr-only">Product Name</label>
                                     <input
+                                        id="prodNameInput"
+                                        name="prodNameInput"
                                         type="text"
                                         placeholder="Product Name"
                                         className="w-full rounded-lg border-gray-300 p-3"
                                         value={formData.productName}
                                         onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
                                     />
+
+                                    <label htmlFor="prodDescInput" className="sr-only">Current Description</label>
                                     <textarea
+                                        id="prodDescInput"
+                                        name="prodDescInput"
                                         rows={3}
                                         placeholder="Current Draft / Rough Notes..."
                                         className="w-full rounded-lg border-gray-300 p-3"
                                         value={formData.productDescription}
                                         onChange={(e) => setFormData({ ...formData, productDescription: e.target.value })}
                                     />
+
+                                    <label htmlFor="prodFeaturesInput" className="sr-only">Key Features</label>
                                     <input
+                                        id="prodFeaturesInput"
+                                        name="prodFeaturesInput"
                                         type="text"
                                         placeholder="Key Features (comma separated)"
                                         className="w-full rounded-lg border-gray-300 p-3"
                                         value={formData.keyFeatures}
                                         onChange={(e) => setFormData({ ...formData, keyFeatures: e.target.value })}
                                     />
+
+                                    <label htmlFor="prodSeoInput" className="sr-only">SEO Keywords</label>
                                     <input
+                                        id="prodSeoInput"
+                                        name="prodSeoInput"
                                         type="text"
                                         placeholder="SEO Keywords (comma separated)"
                                         className="w-full rounded-lg border-gray-300 p-3"
@@ -380,13 +419,18 @@ export default function AIStudioPage() {
 
                             {/* VISUALS FORM */}
                             {activeTab === 'image' && (
-                                <textarea
-                                    rows={4}
-                                    placeholder="Describe your image..."
-                                    className="w-full rounded-lg border-gray-300 p-3 focus:ring-pink-500"
-                                    value={formData.prompt}
-                                    onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                                />
+                                <>
+                                    <label htmlFor="imagePromptInput" className="sr-only">Image Prompt</label>
+                                    <textarea
+                                        id="imagePromptInput"
+                                        name="imagePromptInput"
+                                        rows={4}
+                                        placeholder="Describe your image..."
+                                        className="w-full rounded-lg border-gray-300 p-3 focus:ring-pink-500"
+                                        value={formData.prompt}
+                                        onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
+                                    />
+                                </>
                             )}
 
                             <div className="mt-6 flex justify-end">

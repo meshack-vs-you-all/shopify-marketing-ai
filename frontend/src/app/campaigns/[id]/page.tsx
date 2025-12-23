@@ -107,9 +107,9 @@ export default function CampaignDetailPage() {
               onClick={async () => {
                 try {
                   await api.optimizeCampaign(campaignId);
-                  alert('Optimization recommendations generated');
+                  console.log('Optimization recommendations generated');
                 } catch (err) {
-                  alert('Failed to optimize campaign');
+                  console.error('Failed to optimize campaign', err);
                 }
               }}
               className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700"
@@ -123,7 +123,7 @@ export default function CampaignDetailPage() {
                     await api.deployCampaign(campaignId);
                     loadCampaignData();
                   } catch (err) {
-                    alert('Failed to deploy campaign');
+                    console.error('Failed to deploy campaign', err);
                   }
                 }}
                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"

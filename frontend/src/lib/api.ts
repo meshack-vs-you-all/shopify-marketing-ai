@@ -99,6 +99,14 @@ export const api = {
 
   rejectRequest: (id: string, data: { rejectedBy: string; reason: string }) =>
     apiClient.post(`/api/approvals/${id}/reject`, data),
+
+  // Campaign Wizard
+  createCampaignDraft: (data: { type: string; name: string }) => apiClient.post('/api/campaigns/wizard/draft', data),
+  getCampaignWizardData: (id: string) => apiClient.get(`/api/campaigns/wizard/${id}`),
+  updateCampaignAudience: (id: string, data: any) => apiClient.put(`/api/campaigns/wizard/${id}/audience`, data),
+  updateCampaignContent: (id: string, data: any) => apiClient.put(`/api/campaigns/wizard/${id}/content`, data),
+  finalizeCampaign: (id: string) => apiClient.post(`/api/campaigns/wizard/${id}/finalize`),
+  sendCampaignWizard: (id: string) => apiClient.post(`/api/campaigns/wizard/${id}/send`),
 };
 
 export default apiClient;

@@ -87,7 +87,7 @@ export default function ListsPage() {
             setShowCreateModal(false);
             loadLists();
         } catch (err) {
-            alert('Failed to create list');
+            console.error('Failed to create list', err);
         }
     };
 

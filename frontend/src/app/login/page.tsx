@@ -123,6 +123,35 @@ export default function LoginPage() {
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </button>
             </div>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-3">
+                <div title="Requires Google Cloud Project Configuration">
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 cursor-not-allowed opacity-60"
+                  >
+                    <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">
+                      <path
+                        d="M12.0003 20.45c4.6667 0 8.0191-3.2392 8.0191-8.1383 0-0.7834-0.1064-1.3508-0.24-1.875H12.0003v3.4792h4.5968c-0.2128 1.4875-1.5362 3.1208-4.5968 3.1208-2.7725 0-5.048-2.2708-5.048-5.0375s2.2755-5.0375 5.048-5.0375c1.334 0 2.5085 0.4908 3.42 1.355l2.6713-2.6709C16.3983 4.1458 14.3973 3.15 12.0003 3.15 7.1065 3.15 3.1499 7.1067 3.1499 12c0 4.8933 3.9566 8.85 8.8504 8.85z"
+                        fill="#EA4335"
+                      />
+                    </svg>
+                    <span className="ml-2">Sign in with Google</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </form>
         </div>
       </div>

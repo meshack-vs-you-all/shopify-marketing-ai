@@ -110,10 +110,12 @@ export default function SettingsPage() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="font-medium text-gray-800">Active Model</p>
+                                <label htmlFor="aiModelSelect" className="font-medium text-gray-800">Active Model</label>
                                 <p className="text-sm text-gray-500">Selected for all generation tasks</p>
                             </div>
                             <select
+                                id="aiModelSelect"
+                                name="aiModelSelect"
                                 className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
                                 value={typeof window !== 'undefined' ? localStorage.getItem('ai_model') || 'gemini-flash-lite-latest' : 'gemini-flash-lite-latest'}
                                 onChange={(e) => {
@@ -158,17 +160,29 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="font-medium text-gray-800">Campaign Completed</p>
+                            <label htmlFor="notifyCampaignComplete" className="font-medium text-gray-800">Campaign Completed</label>
                             <p className="text-sm text-gray-500">Get notified when a campaign finishes sending.</p>
                         </div>
-                        <input type="checkbox" className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" defaultChecked />
+                        <input
+                            id="notifyCampaignComplete"
+                            name="notifyCampaignComplete"
+                            type="checkbox"
+                            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            defaultChecked
+                        />
                     </div>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="font-medium text-gray-800">Weekly Performance Report</p>
+                            <label htmlFor="notifyWeeklyReport" className="font-medium text-gray-800">Weekly Performance Report</label>
                             <p className="text-sm text-gray-500">Summary of ad spend and ROAS delivered Mondays.</p>
                         </div>
-                        <input type="checkbox" className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" defaultChecked />
+                        <input
+                            id="notifyWeeklyReport"
+                            name="notifyWeeklyReport"
+                            type="checkbox"
+                            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            defaultChecked
+                        />
                     </div>
                 </div>
             </Card>

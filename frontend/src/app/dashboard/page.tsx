@@ -41,7 +41,7 @@ export default function DashboardPage() {
 
             // Calculate aggregate stats
             const revenue = campaigns.reduce((sum: number, c: any) => sum + (c.revenue || 0), 0);
-            const activeCount = campaigns.filter((c: any) => c.status === 'ACTIVE').length;
+            const activeCount = campaigns.filter((c: any) => c.status === 'ACTIVE' || c.status === 'READY' || c.status === 'SCHEDULED').length;
             const emailCount = emails.reduce((sum: number, e: any) => sum + (e.sentCount || 0), 0);
 
             setStats({
@@ -112,7 +112,7 @@ export default function DashboardPage() {
                                 <MegaphoneIcon className="w-6 h-6 text-blue-600" />
                             </div>
                             <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Active Ad Campaigns</p>
+                                <p className="text-sm font-medium text-gray-500">Active/Ready Campaigns</p>
                                 <p className="text-2xl font-bold text-gray-900">{stats.activeCampaigns}</p>
                             </div>
                         </div>
