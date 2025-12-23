@@ -259,7 +259,7 @@ router.get('/verify-connection', async (req, res) => {
 
 router.post('/test-smtp', async (req, res) => {
   try {
-    const { email, dryRun } = req.body;
+    const { email, dryRun, subject, htmlBody } = req.body;
     const { emailService } = require('../services/email.service');
 
     // First verify connection
@@ -268,8 +268,8 @@ router.post('/test-smtp', async (req, res) => {
     // Attempt to send a test email
     const result = await emailService.sendMarketingEmail({
       to: email || (req as any).user?.email || 'test@example.com',
-      subject: 'Test Email - Shopify Marketing AI',
-      htmlBody: `
+      subject: subject || 'Test Email - Shopify Marketing AI',
+      htmlBody: htmlBody || `
         <h1>Test Email</h1>
         <p>This is a test email from your Shopify Marketing AI instance.</p>
         <p><strong>Connection Status:</strong></p>

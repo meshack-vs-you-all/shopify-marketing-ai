@@ -1,16 +1,16 @@
+import dotenv from 'dotenv';
+// Load environment variables immediately
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { validateEnv } from './config/validateEnv';
 import apiRoutes from './api/routes';
 import './workers/email.worker'; // Initialize email worker
-
-// Load environment variables
-dotenv.config();
 
 // Validate environment variables before starting
 validateEnv();

@@ -13,11 +13,12 @@ class AIService {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
+      console.error('CRITICAL: Gemini API key NOT FOUND');
       logger.warn('Gemini API key not configured');
-      // @ts-ignore - Handle missing key gracefully in methods or ensure key exists
+      // @ts-ignore
       return;
     }
-
+    console.log('Gemini Service Initialized with Key:', apiKey.substring(0, 5) + '...');
     this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
@@ -136,6 +137,7 @@ Requirements:
       const content = result.response.text() || '';
       return this.parseListResponse(content, params.numberOfVariations || 5);
     } catch (error: any) {
+      console.error('CRITICAL AI ERROR:', error);
       logger.error('Error generating email subject lines', { error: error.message, params });
       throw new Error(`Failed to generate email subjects: ${error.message}`);
     }
@@ -173,6 +175,7 @@ Requirements:
 
       return result.response.text() || '';
     } catch (error: any) {
+      console.error('CRITICAL AI ERROR (BODY):', error);
       logger.error('Error generating email body', { error: error.message, params });
       throw new Error(`Failed to generate email body: ${error.message}`);
     }

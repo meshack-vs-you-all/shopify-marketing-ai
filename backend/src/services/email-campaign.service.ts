@@ -234,18 +234,34 @@ class EmailCampaignService {
     const openRate = totalDelivered > 0 ? (totalOpened / totalDelivered) * 100 : 0;
     const clickRate = totalOpened > 0 ? (totalClicked / totalOpened) * 100 : 0;
 
+    // Generic Campaign Stats (Meta & New Newsletters)
+    const unifiedCampaigns = await prisma.campaign.findMany();
+    const metaCampaigns = unifiedCampaigns.filter(c => c.type === 'META_AD');
+
+    // Merge new newsletters into email stats if desired, or keep separate. 
+    // For now, let's just add Meta stats.
+
     return {
       overview: {
-        totalCampaigns: campaigns.length,
+        totalCampaigns: campaigns.length, // Legacy Email
         totalSent,
         avgDeliveryRate: parseFloat(deliveryRate.toFixed(2)),
         avgOpenRate: parseFloat(openRate.toFixed(2)),
         avgClickRate: parseFloat(clickRate.toFixed(2)),
       },
+      meta: {
+        total: metaCampaigns.length,
+        draft: metaCampaigns.filter(c => c.status === 'DRAFT').length,
+        ready: metaCampaigns.filter(c => c.status === 'READY' || c.status === 'SCHEDULED').length,
+      },
       recentCampaigns: await prisma.emailCampaign.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: { emailList: true }
+      }),
+      recentUnified: await prisma.campaign.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' }
       })
     };
   }

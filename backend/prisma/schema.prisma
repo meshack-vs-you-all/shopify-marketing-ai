@@ -12,15 +12,37 @@ datasource db {
 // Campaigns
 model Campaign {
   id            String   @id @default(cuid())
+  type          CampaignType @default(META_AD) // NEWSLETTER or META_AD
   platform      Platform @default(META)
   name          String
   status        CampaignStatus @default(DRAFT)
-  budget        Decimal  @db.Decimal(10, 2)
+  
+  // -- Budget & Schedule --
+  budget        Decimal? @db.Decimal(10, 2)
   dailyBudget   Decimal? @db.Decimal(10, 2)
-  objective     String
-  targetAudience Json?   // Store targeting parameters as JSON
   startDate     DateTime?
   endDate       DateTime?
+
+  // -- Audience --
+  emailListId   String?
+  emailList     EmailList? @relation(fields: [emailListId], references: [id])
+  targetAudience Json?   // Meta targeting params or generic
+
+  // -- Content (Meta) --
+  objective     String?
+  headline      String?
+  primaryText   String?
+  description   String?
+  cta           String?
+  creativeUrl   String?
+  previewImage  String?
+
+  // -- Content (Email) --
+  subject       String?
+  htmlContent   String?  @db.Text
+  textContent   String?  @db.Text
+  
+  // -- Meta/External --
   externalId    String?  // ID from platform (Meta/Google)
   
   // Performance metrics
@@ -35,13 +57,24 @@ model Campaign {
   adSets        AdSet[]
   approvals     Approval[]
   metrics       CampaignMetric[]
+  deliveryLogs  EmailDeliveryLog[] // Direct relation for Newsletter sends
   
+  // Counts for local tracking
+  sentCount     Int      @default(0)
+  failedCount   Int      @default(0)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
+  @@index([type, status])
   @@index([platform, status])
   @@index([externalId])
   @@map("campaigns")
+}
+
+enum CampaignType {
+  NEWSLETTER
+  META_AD
 }
 
 // Ad Sets (Meta) / Ad Groups (Google)
@@ -275,9 +308,10 @@ model EmailList {
   name        String
   description String?
   subscribers Subscriber[]
-  campaigns   EmailCampaign[]
+  campaigns     EmailCampaign[]
+  unifiedCampaigns Campaign[] // Relation to new generic Campaign model
 
-  createdAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("email_lists")
@@ -352,10 +386,13 @@ model EmailDeliveryLog {
   clickedAt     DateTime?
 
   // Relations
-  campaign      EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign      Campaign?      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  emailCampaign EmailCampaign? @relation(fields: [emailCampaignId], references: [id])
+  emailCampaignId String?      // Temporarily keep ensuring backwards compat if needed, or just switch
   subscriber    Subscriber    @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
+  @@index([emailCampaignId])
   @@index([subscriberId])
   @@map("email_delivery_logs")
 }

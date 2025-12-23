@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import campaignsRoutes from './campaigns.routes';
 import approvalsRoutes from './approvals.routes';
 import emailCampaignsRoutes from './email-campaigns.routes';
+import campaignWizardRoutes from './campaigns.wizard.routes';
 
 import authRoutes from './auth.routes';
 
@@ -20,6 +21,7 @@ router.use('/auth', authRoutes);
 // Protected Routes
 router.use('/campaigns', authenticate, campaignsRoutes);
 router.use('/email-campaigns', authenticate, emailCampaignsRoutes);
+router.use('/campaigns/wizard', authenticate, campaignWizardRoutes);
 router.use('/approvals', authenticate, approvalsRoutes);
 
 // Analytics endpoint (placeholder)

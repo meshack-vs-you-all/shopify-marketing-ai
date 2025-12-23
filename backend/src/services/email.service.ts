@@ -118,7 +118,7 @@ class EmailService {
     }
 
     // --- DRY RUN ---
-    if (options.dryRun) {
+    if (options.dryRun === true) {
       logger.info(`[DRY-RUN] Would send email to: ${options.to} via SES/SMTP`);
       return {
         success: true,
@@ -127,7 +127,7 @@ class EmailService {
       };
     }
 
-    // --- ATTEMPT 1: SES (Primary) ---
+    // --- ATTEMPT 1: SES (Primary - Switched by Request) ---
     if (this.sesClient) {
       try {
         const result = await this.sendViaSES(options, from);
@@ -137,7 +137,7 @@ class EmailService {
           provider: 'SES'
         };
       } catch (sesError: any) {
-        logger.warn('Failed to send via SES. Attempting fallback to SMTP...', { error: sesError.message });
+        logger.warn('Failed to send via SES (Primary). Attempting fallback to SMTP...', { error: sesError.message });
         // Proceed to fallback...
       }
     }
@@ -154,11 +154,10 @@ class EmailService {
       } catch (smtpError: any) {
         logger.error('Failed to send via SMTP (Fallback)', { error: smtpError.message });
 
-        // Return error from the fallback attempt (or initial if no fallback exists)
         return {
           success: false,
           messageId: '',
-          provider: 'SMTP',
+          provider: 'SES', // default to SES for error reporting context if both fail
           error: `SES Failed. SMTP Failed: ${smtpError.message}`
         };
       }

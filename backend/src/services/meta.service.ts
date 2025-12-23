@@ -42,12 +42,15 @@ class MetaService {
           objective: params.objective,
           status: params.status,
           special_ad_categories: params.specialAdCategories || [],
+          buying_type: 'AUCTION',
+          is_adset_budget_sharing_enabled: false,
         }),
       });
 
       const data: any = await response.json();
 
       if (data.error) {
+        console.error('Meta API Error Details:', JSON.stringify(data.error, null, 2)); // Direct log for debugging
         throw new Error(data.error.message);
       }
 
