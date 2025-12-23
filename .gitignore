@@ -83,3 +83,13 @@ tmp/
 temp/
 .cache/
 
+
+# Local Test Scripts
+backend/scripts/validate_meta_auth.ts
+backend/scripts/validate_ses_config.ts
+backend/scripts/test_email_live.ts
+backend/scripts/test_meta_campaign.ts
+backend/scripts/simulate_launch.ts
+backend/scripts/verify_sandbox_recipients.ts
+backend/scripts/meta_token_exchange.ts
+backend/scripts/exchange_meta.ts
