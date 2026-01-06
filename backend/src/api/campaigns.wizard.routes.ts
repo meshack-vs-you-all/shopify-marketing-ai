@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { campaignService } from '../services/campaign.service';
 import { authenticate } from '../middleware/auth';
-import { emailWorker } from '../workers/email.worker'; // Direct import ok
+import { emailQueue, EMAIL_QUEUE_NAME } from '../workers/queues';
 
 const router = Router();
 router.use(authenticate);
@@ -67,7 +67,7 @@ router.post('/:id/send', async (req, res) => {
 
         // Add to shared email worker queue
         // We add a 'source' flag or just rely on ID lookup strategy
-        await emailWorker.add('send-campaign-unified', { campaignId: req.params.id, isUnified: true });
+        await emailQueue.add(EMAIL_QUEUE_NAME, { campaignId: req.params.id, isUnified: true });
 
         res.json({ success: true, message: 'Campaign queued' });
     } catch (err: any) {

@@ -3,10 +3,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-COPY tsconfig.json ./
-COPY prisma ./prisma/
+# Copy shared first
+COPY shared ./shared
+
+# Setup backend
+WORKDIR /app/backend
+COPY backend/package.json backend/pnpm-lock.yaml ./
+COPY backend/tsconfig.json ./
+COPY backend/prisma ./prisma/
 
 # Install pnpm and dependencies
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -16,7 +20,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm prisma generate
 
 # Copy source code
-COPY . .
+COPY backend/ .
 
 # Build TypeScript
 RUN pnpm run build

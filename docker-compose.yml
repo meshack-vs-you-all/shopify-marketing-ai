@@ -36,7 +36,9 @@ services:
 
   backend:
     container_name: shopify_marketing_ai_backend
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: always
     ports:
       - "5000:5000"
@@ -60,8 +62,10 @@ services:
 
   worker:
     container_name: shopify_marketing_ai_worker
-    build: ./backend
-    command: npm run start:worker
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: pnpm run start:worker
     restart: always
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/shopify_marketing_ai

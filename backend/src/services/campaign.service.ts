@@ -103,8 +103,46 @@ class CampaignService {
     // Update status
     return await prisma.campaign.update({
       where: { id },
-      data: { status: CampaignStatus.READY }
+      data: { status: CampaignStatus.PENDING } // READY doesn't exist in Prisma enum, using PENDING
     });
+  }
+
+  /**
+   * Alias for createDraft to match route expectation
+   */
+  async createCampaign(data: any) {
+    return this.createDraft(data);
+  }
+
+  /**
+   * Get campaign metrics stub
+   */
+  async getCampaignMetrics(id: string) {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id },
+      include: { metrics: true }
+    });
+    return campaign?.metrics || [];
+  }
+
+  /**
+   * Optimize campaign stub
+   */
+  async optimizeCampaign(id: string) {
+    logger.info(`Optimizing campaign ${id}`);
+    return { success: true, message: 'Optimization logic not yet implemented' };
+  }
+
+  /**
+   * Deploy campaign stub
+   */
+  async deployCampaign(id: string) {
+    logger.info(`Deploying campaign ${id}`);
+    const campaign = await prisma.campaign.update({
+      where: { id },
+      data: { status: CampaignStatus.ACTIVE }
+    });
+    return campaign;
   }
 
   /**

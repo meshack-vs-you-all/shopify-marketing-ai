@@ -34,7 +34,7 @@ const developmentFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.printf(({ timestamp, level, message, correlationId, ...meta }) => {
     let msg = `${timestamp} [${level}]`;
-    if (correlationId) msg += ` [${correlationId.substring(0, 8)}]`;
+    if (typeof correlationId === 'string') msg += ` [${correlationId.substring(0, 8)}]`;
     msg += `: ${message}`;
     if (Object.keys(meta).length > 0 && meta.service === undefined) {
       msg += ` ${JSON.stringify(meta)}`;
