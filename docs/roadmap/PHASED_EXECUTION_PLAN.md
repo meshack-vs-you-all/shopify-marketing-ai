@@ -2,7 +2,7 @@
 **(Shopify Marketing AI Platform)**
 
 > **Status:** Living Document
-> **Current Phase:** Phase 0 (Stabilization)
+> **Current Phase:** Phase 1 (MVP Enablement)
 
 ---
 
@@ -16,11 +16,11 @@
 - [x] Git Repo Clean
 
 ### Task Checklist
-- [ ] **Auth Repair**: Fix `Invalid prisma.user.findUnique()` in `auth.service.ts`.
-- [ ] **Orchestration**: Add `backend`, `frontend`, `worker` to `docker-compose.yml`.
-- [ ] **Worker Activation**: Ensure `worker` container starts and connects to Redis.
-- [ ] **Startup Script**: Create `scripts/start-dev.sh` to handle cleanup and startup.
-- [ ] **Env Validation**: Enforce environment variable checks on startup.
+- [x] **Auth Repair**: Fix `Invalid prisma.user.findUnique()` in `auth.service.ts`.
+- [x] **Orchestration**: Add `backend`, `frontend`, `worker` to `docker-compose.yml`.
+- [x] **Worker Activation**: Ensure `worker` container starts and connects to Redis.
+- [x] **Startup Script**: Create `scripts/start-dev.sh` to handle cleanup and startup.
+- [ ] **Env Validation**: Enforce environment variable checks on startup. (Deferred to Phase 2)
 
 ### Verification Steps
 1.  **Auth**: Login with valid credentials → Success (Token returned).
@@ -43,11 +43,11 @@
 - Phase 0 Complete.
 - User Login functional.
 
-### Task Checklist
-- [ ] **Shopify Write Scopes**: Update scopes to allow creating discounts/metafields if needed.
-- [ ] **Image Gen Placeholder**: Replace "NOT_SUPPORTED" string with a graceful UI fallback or stock image integration.
-- [ ] **Email Delivery**: Configure `AWS SES` transport in `email.service.ts`.
-- [ ] **Health Checks**: Add `/health` endpoints to all services.
+### Task Checklist (Atomic Commits)
+- [ ] **Commit E:** Verify existing SES integration in `email.service.ts` (audit, no rewrite).
+- [ ] **Commit F:** Add graceful fallback for AI image generation.
+- [ ] **Commit G:** Add `/health` endpoints to backend services.
+- [ ] **Commit H:** Update Shopify scopes documentation (no code change yet).
 
 ### Verification Steps
 1.  **Shopify**: data sync pulls products correctly.
