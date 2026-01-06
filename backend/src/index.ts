@@ -41,13 +41,50 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
+// Health check - detailed
+app.get('/health', async (req, res) => {
+  const health: {
+    status: 'ok' | 'degraded';
+    timestamp: string;
+    uptime: number;
+    services: {
+      database: 'connected' | 'disconnected';
+      redis: 'connected' | 'disconnected';
+    };
+  } = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-  });
+    services: {
+      database: 'disconnected',
+      redis: 'disconnected'
+    }
+  };
+
+  // Check database
+  try {
+    const { prisma } = await import('./config/database');
+    await prisma.$queryRaw`SELECT 1`;
+    health.services.database = 'connected';
+  } catch {
+    health.status = 'degraded';
+  }
+
+  // Check Redis (optional, only if ioredis is initialized elsewhere)
+  try {
+    const Redis = (await import('ioredis')).default;
+    const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      connectTimeout: 2000,
+      maxRetriesPerRequest: 1
+    });
+    await redis.ping();
+    health.services.redis = 'connected';
+    await redis.quit();
+  } catch {
+    health.status = 'degraded';
+  }
+
+  res.status(health.status === 'ok' ? 200 : 503).json(health);
 });
 
 // API routes
