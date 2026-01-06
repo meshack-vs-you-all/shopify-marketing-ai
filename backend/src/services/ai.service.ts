@@ -243,14 +243,27 @@ Provide:
     try {
       // NOTE: The current GoogleGenerativeAI SDK for Node.js is primarily for text/multimodal inputs -> text output.
       // Image generation often requires specific REST calls to Imagen on Vertex AI or specific Gemini models.
-      // For now, we will attempt to use the model if configured, or return a placeholder explaining limitation.
+      // For now, we return a graceful placeholder image URL.
 
-      // This is a placeholder implementation as standard Gemini API (free/paid tier via API key) 
-      // usually returns text. If the user has a specific model accessed via this SDK that returns images (unlikely directly as base64), 
-      // we might need a different approach.
+      // Determine dimensions based on aspect ratio
+      const dimensions = {
+        '1:1': { width: 512, height: 512 },
+        '16:9': { width: 1280, height: 720 },
+        '9:16': { width: 720, height: 1280 }
+      };
 
-      // However, assuming we want to enable the UI for it:
-      return "DYNAMIC_IMAGE_GENERATION_NOT_YET_SUPPORTED_VIA_SDK_USE_PLACEHOLDER";
+      const { width, height } = dimensions[params.aspectRatio || '1:1'];
+
+      // Return a placeholder image from a reliable service
+      // Using placehold.co as it's simple and reliable
+      const placeholderUrl = `https://placehold.co/${width}x${height}/1a1a2e/eee?text=AI+Image+Coming+Soon`;
+
+      logger.info('Image generation requested - returning placeholder', {
+        prompt: params.prompt.substring(0, 50),
+        aspectRatio: params.aspectRatio
+      });
+
+      return placeholderUrl;
 
       /* 
       // Future implementation when SDK supports it or via REST:
