@@ -2,7 +2,7 @@
 **(Shopify Marketing AI Platform)**
 
 > **Status:** Living Document
-> **Current Phase:** Phase 1 (MVP Enablement)
+> **Current Phase:** Phase 2 (Hardening & Scale)
 
 ---
 
@@ -44,10 +44,10 @@
 - User Login functional.
 
 ### Task Checklist (Atomic Commits)
-- [ ] **Commit E:** Verify existing SES integration in `email.service.ts` (audit, no rewrite).
-- [ ] **Commit F:** Add graceful fallback for AI image generation.
-- [ ] **Commit G:** Add `/health` endpoints to backend services.
-- [ ] **Commit H:** Update Shopify scopes documentation (no code change yet).
+- [x] **Commit E:** Verify existing SES integration in `email.service.ts` (audit, no rewrite).
+- [x] **Commit F:** Add graceful fallback for AI image generation.
+- [x] **Commit G:** Add `/health` endpoints to backend services.
+- [x] **Commit H:** Update Shopify scopes documentation (no code change yet).
 
 ### Verification Steps
 1.  **Shopify**: data sync pulls products correctly.
@@ -67,11 +67,11 @@
 - Phase 1 Complete.
 - MVP functional.
 
-### Task Checklist
-- [ ] **Structured Logging**: Implement JSON logging with correlation IDs.
-- [ ] **Redis Persistence**: Enable AOF/RDB in `docker-compose`.
-- [ ] **Rate Limiting**: Add global rate limits for API routes.
-- [ ] **CI/CD**: Create GitHub Actions for build/test.
+### Task Checklist (Atomic Commits)
+- [x] **Commit I:** Enhance logging with JSON format and correlation IDs.
+- [x] **Commit J:** Enable Redis persistence (AOF) in docker-compose.
+- [x] **Commit K:** Add rate limiting improvements.
+- [x] **Commit L:** Create CI/CD workflow (GitHub Actions).
 
 ### Verification Steps
 1.  **Logs**: Logs are machine-parsable.
