@@ -107,6 +107,10 @@ export const api = {
   updateCampaignContent: (id: string, data: any) => apiClient.put(`/api/campaigns/wizard/${id}/content`, data),
   finalizeCampaign: (id: string) => apiClient.post(`/api/campaigns/wizard/${id}/finalize`),
   sendCampaignWizard: (id: string) => apiClient.post(`/api/campaigns/wizard/${id}/send`),
+
+  // Settings
+  getIntegrationStatus: () => apiClient.get('/api/settings/integrations'),
+  getSystemStatus: () => apiClient.get('/api/settings/system'),
 };
 
 export default apiClient;

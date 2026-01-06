@@ -5,13 +5,7 @@ import { logger } from '../utils/logger';
 import { CampaignStatus, DeliveryStatus, SubscriberStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 
-// Email queue for background job processing
-const emailQueue = new Queue('email-campaigns', {
-  connection: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379')
-  }
-});
+import { emailQueue } from '../workers/queues';
 
 interface AddSubscriberParams {
   email: string;
@@ -222,28 +216,79 @@ class EmailCampaignService {
    * Get global dashboard metrics
    */
   async getDashboardMetrics() {
+    // 1. Fetch Legacy Email Campaigns
     const campaigns = await prisma.emailCampaign.findMany();
 
-    const totalSent = campaigns.reduce((acc, c) => acc + c.sentCount, 0);
-    const totalDelivered = campaigns.reduce((acc, c) => acc + c.deliveredCount, 0);
-    const totalOpened = campaigns.reduce((acc, c) => acc + c.openCount, 0);
-    const totalClicked = campaigns.reduce((acc, c) => acc + c.clickCount, 0);
+    const legacySent = campaigns.reduce((acc, c) => acc + c.sentCount, 0);
+    const legacyDelivered = campaigns.reduce((acc, c) => acc + c.deliveredCount, 0);
+    const legacyOpened = campaigns.reduce((acc, c) => acc + c.openCount, 0);
+    const legacyClicked = campaigns.reduce((acc, c) => acc + c.clickCount, 0);
+
+    // 2. Fetch Unified Campaigns (Type=NEWSLETTER)
+    const unifiedEmailCampaigns = await prisma.campaign.findMany({
+      where: { type: 'NEWSLETTER', status: { not: 'DRAFT' } } // Only count active/sent
+    });
+
+    const unifiedSent = unifiedEmailCampaigns.reduce((acc, c) => acc + c.sentCount, 0);
+    // Unified 'impressions' roughly maps to 'opens' for emails in our model
+    const unifiedOpened = unifiedEmailCampaigns.reduce((acc, c) => acc + c.impressions, 0);
+    const unifiedClicked = unifiedEmailCampaigns.reduce((acc, c) => acc + c.clicks, 0);
+    // Failed count
+    const unifiedFailed = unifiedEmailCampaigns.reduce((acc, c) => acc + c.failedCount, 0);
+
+    // 3. Aggregate
+    const totalSent = legacySent + unifiedSent;
+    const totalOpened = legacyOpened + unifiedOpened;
+    const totalClicked = legacyClicked + unifiedClicked;
+    // Estimate delivered for Unified (Sent - Failed)
+    const unifiedDelivered = unifiedSent - unifiedFailed;
+    const totalDelivered = legacyDelivered + (unifiedDelivered > 0 ? unifiedDelivered : 0);
 
     // Calculate Rates
     const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
     const openRate = totalDelivered > 0 ? (totalOpened / totalDelivered) * 100 : 0;
     const clickRate = totalOpened > 0 ? (totalClicked / totalOpened) * 100 : 0;
 
-    // Generic Campaign Stats (Meta & New Newsletters)
-    const unifiedCampaigns = await prisma.campaign.findMany();
-    const metaCampaigns = unifiedCampaigns.filter(c => c.type === 'META_AD');
+    // 4. Recent Activity (Merge & Sort)
+    const recentLegacy = await prisma.emailCampaign.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: { emailList: true }
+    });
 
-    // Merge new newsletters into email stats if desired, or keep separate. 
-    // For now, let's just add Meta stats.
+    const recentUnified = await prisma.campaign.findMany({
+      where: { type: 'NEWSLETTER' },
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: { emailList: true }
+    });
+
+    // Map unified to match legacy shape for frontend compatibility if needed, 
+    // or just return as is (Frontend expects 'name', 'status', 'sentCount')
+    const mappedUnified = recentUnified.map(c => ({
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      subject: c.subject,
+      sentCount: c.sentCount,
+      openCount: c.impressions,
+      clickCount: c.clicks,
+      createdAt: c.createdAt,
+      emailList: c.emailList,
+      isUnified: true
+    }));
+
+    // Combine and sort
+    const allRecent = [...recentLegacy, ...mappedUnified]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+
+    // Meta Campaigns (for separate stats if needed)
+    const metaCampaigns = await prisma.campaign.findMany({ where: { type: 'META_AD' } });
 
     return {
       overview: {
-        totalCampaigns: campaigns.length, // Legacy Email
+        totalCampaigns: campaigns.length + unifiedEmailCampaigns.length,
         totalSent,
         avgDeliveryRate: parseFloat(deliveryRate.toFixed(2)),
         avgOpenRate: parseFloat(openRate.toFixed(2)),
@@ -254,15 +299,7 @@ class EmailCampaignService {
         draft: metaCampaigns.filter(c => c.status === 'DRAFT').length,
         ready: metaCampaigns.filter(c => c.status === 'READY' || c.status === 'SCHEDULED').length,
       },
-      recentCampaigns: await prisma.emailCampaign.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        include: { emailList: true }
-      }),
-      recentUnified: await prisma.campaign.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' }
-      })
+      recentCampaigns: allRecent,
     };
   }
 }

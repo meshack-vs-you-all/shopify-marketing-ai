@@ -123,20 +123,33 @@ export default function NewNewsletterPage() {
     const onSubmit = async (data: any) => {
         try {
             setSubmitting(true);
-            const campaignRes = await api.createEmailCampaign({
-                name: data.subject,
+
+            // 1. Create Draft (Unified)
+            const draftRes = await api.createCampaignDraft({
+                type: 'NEWSLETTER',
+                name: data.subject
+            });
+            const campaignId = draftRes.data.id;
+
+            // 2. Update Content
+            await api.updateCampaignContent(campaignId, {
                 subject: data.subject,
-                htmlContent: data.htmlContent,
-                listId: data.listId
+                htmlContent: data.htmlContent
             });
 
-            const campaignId = campaignRes.data.id;
-            await api.sendEmailCampaign(campaignId);
+            // 3. Set Audience
+            await api.updateCampaignAudience(campaignId, {
+                emailListId: data.listId
+            });
 
-            console.log('Newsletter queued for sending!');
+            // 4. Send Now (Unified Worker Trigger)
+            await api.sendCampaignWizard(campaignId);
+
+            console.log('Unified Newsletter queued for sending!');
             router.push('/email/dashboard');
         } catch (err) {
             console.error('Failed to send newsletter', err);
+            alert('Failed to send campaign. Check console.');
         } finally {
             setSubmitting(false);
         }

@@ -112,7 +112,7 @@ class CampaignService {
    * This bridges to the existing BullMQ worker but using the generic ID
    */
   async sendNow(id: string) {
-    const { emailWorker } = require('../workers/email.worker'); // Circular dep avoidance if needed, or import top level
+    const { emailQueue, EMAIL_QUEUE_NAME } = require('../workers/queues');
 
     // Ensure it's ready or draft
     const campaign = await this.finalize(id);
@@ -121,14 +121,13 @@ class CampaignService {
       throw new Error('Only newsletters can be "sent" directly');
     }
 
-    // Add to queue
-    // usage: emailWorker.add('send-email', { campaignId: id, type: 'unified' })
-    // We need to update worker to handle this 'unified' flag or infer it
+    // Add to queue with unified flag
+    await emailQueue.add(EMAIL_QUEUE_NAME, {
+      campaignId: id,
+      isUnified: true
+    });
 
-    // For now, let's assume we update the worker to check 'Campaign' table first or fallback
-    // return emailWorker.add('send-unified-campaign', { campaignId: id });
-
-    // Just returning success here, the route handler will call the queue
+    logger.info(`Unified Campaign ${id} queued for sending`);
     return campaign;
   }
 }

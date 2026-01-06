@@ -32,16 +32,20 @@ export default function DashboardPage() {
         try {
             setLoading(true);
             const [campaignsRes, emailsRes] = await Promise.all([
-                api.getCampaigns({ limit: 5 }),
+                api.getCampaigns({ limit: 50 }), // Increase limit for better aggregate stats
                 api.getEmailCampaigns()
             ]);
 
             const campaigns = campaignsRes.data.campaigns || [];
             const emails = emailsRes.data || [];
 
-            // Calculate aggregate stats
-            const revenue = campaigns.reduce((sum: number, c: any) => sum + (c.revenue || 0), 0);
-            const activeCount = campaigns.filter((c: any) => c.status === 'ACTIVE' || c.status === 'READY' || c.status === 'SCHEDULED').length;
+            // Calculate aggregate stats with safety checks
+            const revenue = campaigns.reduce((sum: number, c: any) => sum + (c.revenue ? Number(c.revenue) : 0), 0);
+
+            // Active = ACTIVE, READY, SCHEDULED, SENDING
+            const activeStatuses = ['ACTIVE', 'READY', 'SCHEDULED', 'SENDING'];
+            const activeCount = campaigns.filter((c: any) => activeStatuses.includes(c.status)).length;
+
             const emailCount = emails.reduce((sum: number, e: any) => sum + (e.sentCount || 0), 0);
 
             setStats({
@@ -50,8 +54,8 @@ export default function DashboardPage() {
                 emailsSent: emailCount
             });
 
-            setRecentCampaigns(campaigns.slice(0, 3));
-            setRecentEmails(emails.slice(0, 3));
+            setRecentCampaigns(campaigns.slice(0, 5));
+            setRecentEmails(emails.slice(0, 5));
 
         } catch (err) {
             console.error('Failed to load dashboard data', err);
@@ -76,7 +80,11 @@ export default function DashboardPage() {
                         <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
                         <p className="text-gray-600 mt-1">Welcome back! Here's what's happening today.</p>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={loadData} title="Refresh Data">
+                            <ArrowTrendingUpIcon className="w-5 h-5 sm:mr-0" />
+                            <span className="ml-2 sm:hidden">Refresh</span>
+                        </Button>
                         <Link href="/campaigns/new">
                             <Button variant="primary">
                                 <MegaphoneIcon className="w-5 h-5 mr-2" />
@@ -91,6 +99,7 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                 </div>
+
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -192,6 +201,6 @@ export default function DashboardPage() {
                     </Card>
                 </div>
             </div>
-        </ProtectedRoute>
+        </ProtectedRoute >
     );
 }

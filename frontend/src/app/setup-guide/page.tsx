@@ -1,6 +1,6 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import Link from 'next/link';
@@ -333,76 +333,74 @@ export default function SetupGuidePage() {
   ];
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">Setup Guide</h1>
-              <p className="text-lg text-gray-600">
-                Comprehensive guide to setting up and using Glowify Marketing AI
-              </p>
+    <div className="max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Setup Guide</h1>
+            <p className="text-lg text-gray-600">
+              Comprehensive guide to setting up and using Glowify Marketing AI
+            </p>
+          </div>
+          <Link href="/campaigns">
+            <Button variant="outline">Back to Dashboard</Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Table of Contents */}
+      <Card className="mb-8 bg-gradient-to-br from-primary-50 to-accent-50 border-primary-200">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Table of Contents</h2>
+        <nav className="space-y-2">
+          {sections.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="block px-4 py-2 rounded-lg hover:bg-white/50 transition-colors text-gray-700 hover:text-primary-600"
+            >
+              <span className="mr-2">{section.icon}</span>
+              {section.title}
+            </a>
+          ))}
+        </nav>
+      </Card>
+
+      {/* Sections */}
+      <div className="space-y-8">
+        {sections.map((section) => (
+          <Card key={section.id} id={section.id} className="scroll-mt-8">
+            <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-gray-200">
+              <span className="text-3xl">{section.icon}</span>
+              <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
             </div>
+            <div>{section.content}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Footer CTA */}
+      <Card className="mt-8 bg-gradient-to-r from-primary-600 to-accent-600 text-white">
+        <div className="text-center">
+          <h3 className="text-2xl font-bold mb-2">Ready to Get Started?</h3>
+          <p className="text-primary-100 mb-4">
+            Configure your environment variables and start creating amazing marketing campaigns!
+          </p>
+          <div className="flex justify-center space-x-4">
             <Link href="/campaigns">
-              <Button variant="outline">Back to Dashboard</Button>
+              <Button variant="secondary" size="lg">
+                Go to Campaigns
+              </Button>
+            </Link>
+            <Link href="/campaigns/new">
+              <Button variant="outline" size="lg" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
+                Create Campaign
+              </Button>
             </Link>
           </div>
         </div>
-
-        {/* Table of Contents */}
-        <Card className="mb-8 bg-gradient-to-br from-primary-50 to-accent-50 border-primary-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Table of Contents</h2>
-          <nav className="space-y-2">
-            {sections.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                className="block px-4 py-2 rounded-lg hover:bg-white/50 transition-colors text-gray-700 hover:text-primary-600"
-              >
-                <span className="mr-2">{section.icon}</span>
-                {section.title}
-              </a>
-            ))}
-          </nav>
-        </Card>
-
-        {/* Sections */}
-        <div className="space-y-8">
-          {sections.map((section) => (
-            <Card key={section.id} id={section.id} className="scroll-mt-8">
-              <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-gray-200">
-                <span className="text-3xl">{section.icon}</span>
-                <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
-              </div>
-              <div>{section.content}</div>
-            </Card>
-          ))}
-        </div>
-
-        {/* Footer CTA */}
-        <Card className="mt-8 bg-gradient-to-r from-primary-600 to-accent-600 text-white">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold mb-2">Ready to Get Started?</h3>
-            <p className="text-primary-100 mb-4">
-              Configure your environment variables and start creating amazing marketing campaigns!
-            </p>
-            <div className="flex justify-center space-x-4">
-              <Link href="/campaigns">
-                <Button variant="secondary" size="lg">
-                  Go to Campaigns
-                </Button>
-              </Link>
-              <Link href="/campaigns/new">
-                <Button variant="outline" size="lg" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
-                  Create Campaign
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </ProtectedRoute>
+      </Card>
+    </div>
   );
 }
 

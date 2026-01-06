@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
 import {
     EnvelopeIcon,
     PaperAirplaneIcon,
     CursorArrowRaysIcon,
     EyeIcon,
-    ChartBarIcon
+    ChartBarIcon,
+    ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
@@ -56,12 +58,16 @@ export default function EmailDashboard() {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Email Marketing</h1>
                     <p className="text-gray-500 dark:text-gray-400">Campaign performance and engagement overview.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" onClick={loadStats} title="Refresh Data">
+                        <ArrowTrendingUpIcon className="w-5 h-5 sm:mr-0" />
+                        <span className="ml-2 sm:hidden">Refresh</span>
+                    </Button>
                     <Link href="/email/lists">
                         <span className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                             Manage Lists
@@ -136,8 +142,8 @@ export default function EmailDashboard() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${campaign.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                                        campaign.status === 'SENDING' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-gray-100 text-gray-800'
+                                                    campaign.status === 'SENDING' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-gray-100 text-gray-800'
                                                     }`}>
                                                     {campaign.status}
                                                 </span>

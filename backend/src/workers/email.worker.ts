@@ -5,6 +5,7 @@ import { prisma } from '../config/database';
 import { emailService } from '../services/email.service';
 import { CampaignStatus, DeliveryStatus, EmailCampaign } from '@prisma/client';
 import pLimit from 'p-limit';
+import { EMAIL_QUEUE_NAME } from './queues';
 
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6380', {
   maxRetriesPerRequest: null,
@@ -27,7 +28,7 @@ interface EmailJobData {
  * we process the whole list in one job with concurrency control.
  */
 export const emailWorker = new Worker<EmailJobData>(
-  'email-sending',
+  EMAIL_QUEUE_NAME,
   async (job: Job<EmailJobData>) => {
     const { campaignId, isUnified } = job.data;
     logger.info(`Starting email campaign sending`, { campaignId, isUnified });

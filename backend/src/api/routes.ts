@@ -8,6 +8,8 @@ import campaignWizardRoutes from './campaigns.wizard.routes';
 
 import authRoutes from './auth.routes';
 
+import settingsRoutes from './settings.routes';
+
 const router = Router();
 
 // Health check (no authentication required)
@@ -23,6 +25,7 @@ router.use('/campaigns', authenticate, campaignsRoutes);
 router.use('/email-campaigns', authenticate, emailCampaignsRoutes);
 router.use('/campaigns/wizard', authenticate, campaignWizardRoutes);
 router.use('/approvals', authenticate, approvalsRoutes);
+router.use('/settings', authenticate, settingsRoutes);
 
 // Analytics endpoint (placeholder)
 router.get('/analytics', async (req, res) => {

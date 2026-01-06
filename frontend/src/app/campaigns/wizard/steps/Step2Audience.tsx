@@ -114,6 +114,9 @@ export default function Step2Audience({ data, updateData }: Props) {
                                 value={data.targetAudience?.interests || ''}
                                 onChange={(e) => updateData({ targetAudience: { ...data.targetAudience, interests: e.target.value } })}
                             />
+                            <p className="mt-1 text-xs text-gray-500">
+                                This will restrict your ad to people interested in these topics. Leave empty for broad targeting.
+                            </p>
                         </div>
                     </div>
                 </div>
