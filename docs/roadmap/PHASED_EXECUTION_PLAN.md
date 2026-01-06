@@ -80,3 +80,29 @@
 
 ### Exit Criteria
 - Production Ready Scorecard: ✅ on all critical items.
+
+---
+
+## Phase 3: Polish & Documentation (Local Testing Ready)
+
+**Objective**: Clean up repository, validate environment setup, and ensure frictionless local development.
+
+### Entry Criteria
+- Phase 2 Complete.
+- CI/CD workflow created.
+
+### Task Checklist (Atomic Commits)
+- [ ] **Commit M:** Delete redundant root .md files.
+- [ ] **Commit N:** Archive historical docs.
+- [ ] **Commit O:** Create consolidated SETUP.md.
+- [ ] **Commit P:** Add environment validation script.
+- [ ] **Commit Q:** Update README.md with current state.
+
+### Verification Steps
+1.  **Root Clean**: Only README.md and essential configs in root.
+2.  **Setup Works**: New developer can follow SETUP.md.
+3.  **Env Check**: `scripts/check-env.sh` validates required vars.
+
+### Exit Criteria
+- Local development is frictionless.
+- Documentation is accurate and minimal.

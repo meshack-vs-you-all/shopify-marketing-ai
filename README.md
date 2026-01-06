@@ -1,117 +1,58 @@
-# Shopify Marketing Automation AI Agent
+# 🤖 Shopify Marketing AI Platform
 
-A comprehensive AI-powered marketing automation system for Shopify stores, automating ad campaigns, content generation, and performance optimization across Meta, Google Ads, and email platforms.
+An advanced, AI-driven marketing platform designed to automate Shopify store growth through intelligent campaigns, customer segmentation, and multi-channel outreach.
 
-## 🚀 Features
+---
 
-- **Automated Campaign Management**: Create and manage Meta and Google Ads campaigns automatically
-- **AI Content Generation**: Generate ad copy, product descriptions, and email content using GPT-4
-- **Performance Monitoring**: Real-time tracking of campaign metrics and ROAS
-- **Human-in-the-Loop**: Approval workflows for major decisions
-- **Analytics Dashboard**: Comprehensive insights and reporting
-- **Budget Optimization**: Automatic budget allocation based on performance
+## ⚡ Core Features
 
-## 🏗️ Architecture
+- **AI Content Studio**: Automated generate of ad copy, email subjects, and product descriptions using Gemini Pro.
+- **Smart Campaigns**: Multi-channel orchestration (Meta, Google, Email) with budget optimization.
+- **Shopify Integration**: Deep sync with products, orders, and customers.
+- **Email Marketing**: High-deliverability system via AWS SES with built-in list management.
+- **Production-Ready**: Structured logging, persistence, rate limiting, and CI/CD.
 
-```
-shopify-marketing-ai/
-├── backend/          # Node.js/TypeScript API server
-├── frontend/         # Next.js dashboard
-├── shared/           # Shared types and utilities
-├── docs/             # Documentation
-└── scripts/          # Deployment and utility scripts
-```
+---
 
-## 🛠️ Tech Stack
+## 🛠️ Getting Started
 
-- **Backend**: Node.js 20+, TypeScript, Express.js
-- **Frontend**: Next.js 14+, React 18+, Tailwind CSS
-- **Database**: PostgreSQL with Prisma ORM
-- **Queue**: BullMQ with Redis
-- **AI**: OpenAI GPT-4
-- **Hosting**: Railway.app (recommended)
+To get the platform running locally in under 5 minutes, follow our **[Setup Guide](docs/SETUP.md)**.
 
-## 📋 Prerequisites
-
-- Node.js 20+ and npm/yarn
-- PostgreSQL 15+
-- Redis 7+
-- API credentials for:
-  - Shopify Admin API
-  - Meta Business Suite
-  - Google Ads API
-  - OpenAI API
-  - Email platform (Klaviyo recommended)
-
-## 🚀 Quick Start
-
-### 1. Install Dependencies
-
+### Quick Commands
 ```bash
-# Backend
-cd backend
-npm install
+# 1. Start Infrastructure (Postgres/Redis)
+docker-compose up -d
 
-# Frontend
-cd ../frontend
-npm install
+# 2. Start all services safely (Helper script)
+bash scripts/start-dev.sh
 ```
 
-### 2. Set Up Environment Variables
+---
 
-Copy the example env files and fill in your credentials:
+## 📂 Project Structure
 
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env.local
+```text
+├── backend/            # Express.js API & Workers
+├── frontend/           # Next.js 14 Dashboard
+├── docs/               # Technical documentation & Strategies
+├── scripts/            # DevOps and Helper scripts
+└── docker-compose.yml  # Local stack orchestration
 ```
 
-### 3. Set Up Database
-
-```bash
-cd backend
-npx prisma migrate dev
-npx prisma generate
-```
-
-### 4. Start Development Servers
-
-```bash
-# Terminal 1: Backend
-cd backend
-npm run dev
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-
-# Terminal 3: Queue Worker
-cd backend
-npm run worker
-```
-
-Visit `http://localhost:3000` for the dashboard.
+---
 
 ## 📚 Documentation
 
-- [Setup Guide](docs/SETUP.md)
-- [API Documentation](docs/API.md)
-- [Configuration Guide](docs/CONFIGURATION.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
+Detailed documentation is available in the **[`docs/`](docs/)** directory:
 
-## 🔐 Security
+- **[Installation & Setup](docs/SETUP.md)**
+- **[Shopify Strategy](docs/infra/SHOPIFY_WRITE_STRATEGY.md)**
+- **[Email Architecture](docs/infra/EMAIL_DELIVERY_SES.md)**
+- **[Testing Workflow](docs/testing/WORKFLOW.md)**
+- **[Phased Roadmap](docs/roadmap/PHASED_EXECUTION_PLAN.md)**
 
-- All API keys stored in environment variables
-- Database encryption at rest
-- Rate limiting on all endpoints
-- Input validation and sanitization
-- CORS configuration
+---
 
-## 📝 License
+## 🛡️ License
 
-MIT
-
-## 🤝 Contributing
-
-This is a private project. For questions or issues, please contact the development team.
-
+Private Collaboration - Crafted Edge Solutions.
