@@ -50,6 +50,10 @@ export class AuthService {
      * Login user
      */
     async login(data: { email: string; password: string }) {
+        if (!data.email || !data.password) {
+            throw new AppError('Email and password are required', 400, 'validation_error');
+        }
+
         const user = await prisma.user.findUnique({
             where: { email: data.email }
         });
