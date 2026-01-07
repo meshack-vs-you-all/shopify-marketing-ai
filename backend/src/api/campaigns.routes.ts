@@ -12,7 +12,7 @@ import {
   campaignQuerySchema,
 } from '../../../shared/schemas/campaign.schema';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * GET /api/campaigns

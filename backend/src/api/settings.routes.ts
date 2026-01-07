@@ -3,7 +3,7 @@ import { metaService } from '../services/meta.service';
 import { emailService } from '../services/email.service';
 import { logger } from '../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * GET /api/settings/integrations

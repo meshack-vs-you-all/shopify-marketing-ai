@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 // Load environment variables immediately
 dotenv.config();
 
-import express from 'express';
+import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { logger } from './utils/logger';
@@ -15,7 +15,7 @@ import './workers/email.worker'; // Initialize email worker
 // Validate environment variables before starting
 validateEnv();
 
-const app = express();
+const app: Express = express();
 const PORT = process.env.PORT || 5000;
 
 // Security middleware

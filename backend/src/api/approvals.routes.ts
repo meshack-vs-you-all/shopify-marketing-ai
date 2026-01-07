@@ -8,7 +8,7 @@ import {
   rejectRequestSchema,
 } from '../../../shared/schemas/approval.schema';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * GET /api/approvals

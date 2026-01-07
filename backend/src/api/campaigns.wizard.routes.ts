@@ -3,7 +3,7 @@ import { campaignService } from '../services/campaign.service';
 import { authenticate } from '../middleware/auth';
 import { emailQueue, EMAIL_QUEUE_NAME } from '../workers/queues';
 
-const router = Router();
+const router: Router = Router();
 router.use(authenticate);
 
 // 1. Create Draft

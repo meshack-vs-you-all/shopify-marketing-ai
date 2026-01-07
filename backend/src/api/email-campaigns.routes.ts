@@ -8,7 +8,7 @@ import multer from 'multer';
 
 const upload = multer({ dest: 'uploads/' });
 
-const router = Router();
+const router: Router = Router();
 
 // Apply authentication to all email campaign routes
 router.use(authenticate);

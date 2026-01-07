@@ -10,7 +10,7 @@ import authRoutes from './auth.routes';
 
 import settingsRoutes from './settings.routes';
 
-const router = Router();
+const router: Router = Router();
 
 // Health check (no authentication required)
 router.get('/health', (_req, res) => {
