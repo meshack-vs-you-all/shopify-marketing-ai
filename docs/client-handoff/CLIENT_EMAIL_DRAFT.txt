@@ -1,0 +1,27 @@
+
+**Subject:** Action Required: Setup Credentials for Shopify Marketing AI Platform
+
+Dear [Client/Admin Name],
+
+To finalize the deployment of the Shopify Marketing AI Platform and enable live features (Ad creation, Email sending, AI generation), we need to configure the production credentials.
+
+I have prepared a detailed **Credentials Audit Report** (attached) listing the specific keys and ID numbers required.
+
+### 🚨 Critical Missing Items
+The system is currently unable to:
+1.  **Sync Products**: Needs Shopify Admin Access Token.
+2.  **Publish Ads**: Needs Meta App ID & Ad Account ID.
+3.  **Send Emails**: Needs AWS SES keys or SMTP credentials.
+4.  **Generate Content**: Needs Google Gemini API Key.
+
+### 🛡️ How to Send
+For security reasons, please **do not reply directly with these keys**. 
+1.  Use a secure password manager to share the credentials, OR
+2.  Use a service like [OneTimeSecret.com](https://onetimesecret.com) and send me the links.
+
+Once received, I will rotate the temporary development keys and configure the secure production environment.
+
+Best regards,
+
+[Your Name]
+Lead Developer
