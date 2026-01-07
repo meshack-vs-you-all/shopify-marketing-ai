@@ -1,14 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { authenticate } from '../../../src/middleware/auth';
 import { AppError } from '../../../src/middleware/errorHandler';
 
-describe('Authentication Middleware', () => {
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
+
+describe('Authentication Middleware (JWT)', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let nextFunction: NextFunction;
 
   beforeEach(() => {
-    process.env.API_KEY = 'test-api-key-123';
     mockRequest = {
       headers: {},
       ip: '127.0.0.1',
@@ -24,19 +26,17 @@ describe('Authentication Middleware', () => {
     jest.clearAllMocks();
   });
 
-  it('should pass authentication with valid API key', () => {
-    mockRequest.headers = { 'x-api-key': 'test-api-key-123' };
+  it('should pass authentication with a valid Bearer token', () => {
+    const token = jwt.sign({ userId: 'user-123' }, JWT_SECRET);
+    mockRequest.headers = { authorization: `Bearer ${token}` };
 
     authenticate(mockRequest as Request, mockResponse as Response, nextFunction);
 
-    expect(nextFunction).toHaveBeenCalled();
-    expect((mockRequest as any).user).toEqual({
-      apiKey: 'test-api-key-123',
-      authenticated: true,
-    });
+    expect(nextFunction).toHaveBeenCalledWith();
+    expect((mockRequest as any).user).toEqual({ userId: 'user-123' });
   });
 
-  it('should fail authentication without API key', () => {
+  it('should fail authentication when no Authorization header is provided', () => {
     mockRequest.headers = {};
 
     authenticate(mockRequest as Request, mockResponse as Response, nextFunction);
@@ -45,11 +45,11 @@ describe('Authentication Middleware', () => {
     const error = (nextFunction as jest.Mock).mock.calls[0][0];
     expect(error).toBeInstanceOf(AppError);
     expect(error.statusCode).toBe(401);
-    expect(error.message).toContain('API key is required');
+    expect(error.message).toBe('No token provided');
   });
 
-  it('should fail authentication with invalid API key', () => {
-    mockRequest.headers = { 'x-api-key': 'invalid-key' };
+  it('should fail authentication when Authorization header does not start with Bearer', () => {
+    mockRequest.headers = { authorization: 'Basic xyz' };
 
     authenticate(mockRequest as Request, mockResponse as Response, nextFunction);
 
@@ -57,20 +57,31 @@ describe('Authentication Middleware', () => {
     const error = (nextFunction as jest.Mock).mock.calls[0][0];
     expect(error).toBeInstanceOf(AppError);
     expect(error.statusCode).toBe(401);
-    expect(error.message).toContain('Invalid API key');
+    expect(error.message).toBe('No token provided');
   });
 
-  it('should fail if API_KEY environment variable is not set', () => {
-    delete process.env.API_KEY;
-    mockRequest.headers = { 'x-api-key': 'any-key' };
+  it('should fail authentication with an invalid/malformed token', () => {
+    mockRequest.headers = { authorization: 'Bearer invalid-token-here' };
 
     authenticate(mockRequest as Request, mockResponse as Response, nextFunction);
 
     expect(nextFunction).toHaveBeenCalled();
     const error = (nextFunction as jest.Mock).mock.calls[0][0];
     expect(error).toBeInstanceOf(AppError);
-    expect(error.statusCode).toBe(500);
-    expect(error.message).toContain('Server configuration error');
+    expect(error.statusCode).toBe(401);
+    expect(error.message).toBe('Invalid token');
+  });
+
+  it('should fail authentication with an expired token', () => {
+    const expiredToken = jwt.sign({ userId: 'user-123' }, JWT_SECRET, { expiresIn: '-1s' });
+    mockRequest.headers = { authorization: `Bearer ${expiredToken}` };
+
+    authenticate(mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(nextFunction).toHaveBeenCalled();
+    const error = (nextFunction as jest.Mock).mock.calls[0][0];
+    expect(error).toBeInstanceOf(AppError);
+    expect(error.statusCode).toBe(401);
+    expect(error.message).toBe('Invalid token');
   });
 });
-
