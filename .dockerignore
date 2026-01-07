@@ -13,9 +13,9 @@ coverage
 .next
 
 # Environment variables (except example/template)
-.env
-.env.*
-!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
 # Logs
 logs

@@ -1,6 +1,9 @@
 # Backend Dockerfile for Railway/Production
 FROM node:20-alpine
 
+# Install OpenSSL 1.1 compatibility (required by Prisma)
+RUN apk add --no-cache openssl1.1-compat
+
 WORKDIR /app
 
 # Copy shared first
