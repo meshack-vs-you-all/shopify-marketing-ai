@@ -79,11 +79,19 @@ services:
         condition: service_healthy
 
   frontend:
-    container_name: shopify_marketing_ai_frontend
-    build: ./frontend
+    container_name: shopify_marketing_ai_frontend_dev
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
     env_file:
       - path: ./frontend/.env.local
         required: false

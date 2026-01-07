@@ -1,0 +1,23 @@
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Install dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
+
+# Copy source (will be overlaid by volume in compose, but good fallback)
+COPY . .
+
+# Environment variables
+ENV NODE_ENV=development
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+EXPOSE 3000
+
+CMD ["pnpm", "dev"]
