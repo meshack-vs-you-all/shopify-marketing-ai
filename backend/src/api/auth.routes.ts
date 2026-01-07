@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { authService } from '../services/auth.service';
 import { authenticate } from '../middleware/auth';
+import { validateBody } from '../middleware/validation';
+import { registerSchema, loginSchema } from '../../../shared/schemas/auth.schema';
 
-const router = Router();
+const router: Router = Router();
 
-router.post('/register', async (req, res) => {
+router.post('/register', validateBody(registerSchema), async (req, res, next) => {
     try {
         const result = await authService.register(req.body);
         res.status(201).json(result);
