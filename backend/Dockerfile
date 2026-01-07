@@ -22,6 +22,9 @@ RUN pnpm prisma generate
 # Copy source code
 COPY backend/ .
 
+# Symlink node_modules for shared folder resolution
+RUN ln -s /app/backend/node_modules /app/node_modules
+
 # Build TypeScript
 RUN pnpm run build
 
