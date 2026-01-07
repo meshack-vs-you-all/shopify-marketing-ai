@@ -7,7 +7,7 @@ import { CampaignStatus, DeliveryStatus, EmailCampaign } from '@prisma/client';
 import pLimit from 'p-limit';
 import { EMAIL_QUEUE_NAME } from './queues';
 
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6380', {
+const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
 
