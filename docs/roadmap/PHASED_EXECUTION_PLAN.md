@@ -92,11 +92,11 @@
 - CI/CD workflow created.
 
 ### Task Checklist (Atomic Commits)
-- [ ] **Commit M:** Delete redundant root .md files.
-- [ ] **Commit N:** Archive historical docs.
-- [ ] **Commit O:** Create consolidated SETUP.md.
-- [ ] **Commit P:** Add environment validation script.
-- [ ] **Commit Q:** Update README.md with current state.
+- [x] **Commit M:** Delete redundant root .md files.
+- [x] **Commit N:** Archive historical docs.
+- [x] **Commit O:** Create consolidated SETUP.md.
+- [x] **Commit P:** Add environment validation script.
+- [x] **Commit Q:** Update README.md with current state.
 
 ### Verification Steps
 1.  **Root Clean**: Only README.md and essential configs in root.
