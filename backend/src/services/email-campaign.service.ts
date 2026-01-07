@@ -297,7 +297,7 @@ class EmailCampaignService {
       meta: {
         total: metaCampaigns.length,
         draft: metaCampaigns.filter(c => c.status === 'DRAFT').length,
-        ready: metaCampaigns.filter(c => c.status === 'READY' || c.status === 'SCHEDULED').length,
+        ready: metaCampaigns.filter(c => c.status === CampaignStatus.PENDING || c.status === 'SCHEDULED').length,
       },
       recentCampaigns: allRecent,
     };

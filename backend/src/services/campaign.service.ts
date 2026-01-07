@@ -130,7 +130,12 @@ class CampaignService {
    */
   async optimizeCampaign(id: string) {
     logger.info(`Optimizing campaign ${id}`);
-    return { success: true, message: 'Optimization logic not yet implemented' };
+    return {
+      success: true,
+      message: 'Optimization logic not yet implemented',
+      actions: [] as any[],
+      recommendations: [] as any[]
+    };
   }
 
   /**
