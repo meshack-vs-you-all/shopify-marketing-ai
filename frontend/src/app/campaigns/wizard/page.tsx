@@ -34,6 +34,7 @@ export default function CampaignWizardPage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [data, setData] = useState<WizardData>({
         type: 'NEWSLETTER',
@@ -44,10 +45,12 @@ export default function CampaignWizardPage() {
     const syncDraft = async (newData: Partial<WizardData>) => {
         const updated = { ...data, ...newData };
         setData(updated);
+        setError(null);
     };
 
     const nextStep = async () => {
         setLoading(true);
+        setError(null);
         try {
             if (currentStep === 1) {
                 // Create draft if not exists
@@ -80,8 +83,8 @@ export default function CampaignWizardPage() {
             }
 
             setCurrentStep(prev => prev + 1);
-        } catch (err) {
-            console.error('Failed to save draft', err);
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Failed to save draft');
         } finally {
             setLoading(false);
         }
@@ -91,6 +94,14 @@ export default function CampaignWizardPage() {
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4">
+
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <strong className="font-bold">Error: </strong>
+                    <span className="block sm:inline">{error}</span>
+                </div>
+            )}
+
             {/* Step Indicator */}
             <nav aria-label="Progress">
                 <ol role="list" className="flex items-center">
@@ -146,6 +157,7 @@ export default function CampaignWizardPage() {
                     <button
                         onClick={async () => {
                             setLoading(true);
+                            setError(null);
                             try {
                                 if (!data.id) return;
                                 if (data.type === 'NEWSLETTER') {
@@ -154,11 +166,11 @@ export default function CampaignWizardPage() {
                                     router.push('/email/dashboard'); // Or new unified dashboard
                                 } else {
                                     // Finalize Meta
-                                    await api.finalizeCampaign(data.id);
-                                    router.push('/campaigns'); // Or new unified Campaigns list
+                                    const res = await api.finalizeCampaign(data.id);
+                                    router.push(`/campaigns/${res.data.id}`);
                                 }
-                            } catch (e) {
-                                console.error(e);
+                            } catch (e: any) {
+                                setError(e.response?.data?.error || 'An unexpected error occurred.');
                             } finally {
                                 setLoading(false);
                             }

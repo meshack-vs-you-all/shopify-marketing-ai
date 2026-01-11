@@ -61,7 +61,6 @@ export const rejectRequestSchema = z.object({
 export const campaignQuerySchema = z.object({
   platform: z.enum(['META', 'GOOGLE_ADS', 'EMAIL']).optional(),
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'PAUSED', 'ARCHIVED']).optional(),
-  limit: z.coerce.number().int().positive().max(100).optional().default(50),
-  offset: z.coerce.number().int().nonnegative().optional().default(0),
+  limit: z.preprocess((val) => Number(val), z.number().int().positive().max(100).optional().default(50)),
+  offset: z.preprocess((val) => Number(val), z.number().int().nonnegative().optional().default(0)),
 });
-

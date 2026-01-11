@@ -131,6 +131,21 @@ export default function CampaignDetailPage() {
                 Deploy
               </button>
             )}
+            {campaign.status === 'PENDING' && (
+              <button
+                onClick={async () => {
+                  try {
+                    await api.deployCampaign(campaignId);
+                    loadCampaignData();
+                  } catch (err) {
+                    console.error('Failed to deploy campaign', err);
+                  }
+                }}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              >
+                Deploy
+              </button>
+            )}
           </div>
         </div>
 
@@ -244,4 +259,3 @@ export default function CampaignDetailPage() {
     </ProtectedRoute>
   );
 }
-

@@ -71,7 +71,7 @@ router.post('/:id/send', async (req, res) => {
 
         res.json({ success: true, message: 'Campaign queued' });
     } catch (err: any) {
-        res.status(500).json({ error: err.message });
+        res.status(400).json({ error: err.message });
     }
 });
 
