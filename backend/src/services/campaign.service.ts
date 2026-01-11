@@ -1,6 +1,7 @@
-import { prisma } from '../config/database';
+''''import { prisma } from '../config/database';
 import { Campaign, CampaignStatus, CampaignType, Platform } from '@prisma/client';
 import { logger } from '../utils/logger';
+import { metaAdsService } from './meta-ads.service';
 
 export interface CreateDraftDTO {
   type: CampaignType;
@@ -86,25 +87,42 @@ class CampaignService {
   /**
    * Finalize / Mark Ready
    * For Newsletter: this might trigger immediate send or schedule
+   * For Meta: this will publish the ad to the Meta platform
    */
   async finalize(id: string) {
-    const campaign = await prisma.campaign.findUnique({ where: { id } });
-    if (!campaign) throw new Error('Campaign not found');
+    const campaign = await this.validateCampaign(id);
 
-    // Validation
-    if (campaign.type === CampaignType.NEWSLETTER) {
-      if (!campaign.emailListId) throw new Error('Audience (Email List) is required');
-      if (!campaign.subject || !campaign.htmlContent) throw new Error('Content (Subject & Body) is required');
-    } else if (campaign.type === CampaignType.META_AD) {
-      // Logic for Meta Ad readiness
-      if (!campaign.primaryText || !campaign.headline) throw new Error('Ad Copy (Primary Text & Headline) is required');
+    if (campaign.type === CampaignType.META_AD) {
+      const result = await metaAdsService.publishCampaign(campaign);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to publish to Meta');
+      }
+      // Update campaign with the live ad ID and set status to active
+      return await prisma.campaign.update({
+        where: { id },
+        data: { status: CampaignStatus.ACTIVE, externalId: result.adId },
+      });
+    } else {
+      // Existing logic for newsletters (mark as pending)
+      return await prisma.campaign.update({
+        where: { id },
+        data: { status: CampaignStatus.PENDING },
+      });
     }
+  }
 
-    // Update status
-    return await prisma.campaign.update({
-      where: { id },
-      data: { status: CampaignStatus.PENDING } // READY doesn't exist in Prisma enum, using PENDING
-    });
+  async validateCampaign(id: string): Promise<Campaign> {
+      const campaign = await prisma.campaign.findUnique({ where: { id } });
+      if (!campaign) throw new Error('Campaign not found');
+
+      if (campaign.type === CampaignType.NEWSLETTER) {
+          if (!campaign.emailListId) throw new Error('Audience (Email List) is required');
+          if (!campaign.subject || !campaign.htmlContent) throw new Error('Content (Subject & Body) is required');
+      } else if (campaign.type === CampaignType.META_AD) {
+          if (!campaign.primaryText || !campaign.headline) throw new Error('Ad Copy (Primary Text & Headline) is required');
+          if (!campaign.creativeUrl) throw new Error('An ad creative (image) is required');
+      }
+      return campaign;
   }
 
   /**
@@ -176,3 +194,4 @@ class CampaignService {
 }
 
 export const campaignService = new CampaignService();
+''''

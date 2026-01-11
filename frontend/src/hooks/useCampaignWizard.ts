@@ -4,12 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
+export interface TargetAudience {
+    location?: string;
+    ageMin?: string;
+    ageMax?: string;
+    interests?: string;
+}
+
 export type WizardData = {
     id?: string;
     type: 'NEWSLETTER' | 'META_AD';
     name: string;
     emailListId?: string;
-    targetAudience?: any;
+    targetAudience?: TargetAudience;
     subject?: string;
     htmlContent?: string;
     headline?: string;
@@ -45,7 +52,9 @@ export function useCampaignWizard() {
             }
             return true;
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to save draft');
+            const message = err.response?.data?.error || err.message || 'Failed to save draft';
+            setError(message);
+            console.error(err);
             return false;
         } finally {
             setLoading(false);
@@ -73,8 +82,10 @@ export function useCampaignWizard() {
                 const res = await api.finalizeCampaign(data.id);
                 router.push(`/campaigns/${res.data.id}`);
             }
-        } catch (e: any) {
-            setError(e.response?.data?.error || 'An unexpected error occurred.');
+        } catch (err: any) {
+            const message = err.response?.data?.error || err.message || 'An unexpected error occurred';
+            setError(message);
+            console.error(err);
         } finally {
             setLoading(false);
         }
