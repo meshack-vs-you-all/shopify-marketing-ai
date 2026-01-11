@@ -47,7 +47,13 @@ export default function NewCampaignPage() {
       setIsGenerating(true);
       setError('');
       const values = getValues();
-      const response = await api.generateCampaignContent(values);
+      const response = await api.generateAdCopy({
+        productName: values.objective || 'Campaign',
+        productDescription: 'Auto-generated campaign content',
+        targetAudience: 'General audience',
+        platform: values.platform.toLowerCase() as 'meta' | 'google',
+        tone: 'professional',
+      });
       setAiPreview(response.data);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to generate AI content');

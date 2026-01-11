@@ -29,14 +29,14 @@ export default function MetaSettingsPage() {
     const isConnected = status?.connected;
 
     return (
-        <Card>
-            <Card.Header>
+        <Card padding="none">
+            <div className="p-6 border-b border-gray-100">
                 <h2 className="text-xl font-bold">Meta Ads Settings</h2>
                 <p className="text-sm text-gray-500">
                     Manage your connection to Meta and view key configuration details.
                 </p>
-            </Card.Header>
-            <Card.Content className="space-y-6">
+            </div>
+            <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div>
                         <p className="font-medium text-gray-900">Connection Status</p>
@@ -63,7 +63,7 @@ export default function MetaSettingsPage() {
                         <p className="mt-1 text-sm font-medium text-gray-900">{status?.facebookPage || 'Not Connected'}</p>
                     </div>
                 </div>
-            </Card.Content>
+            </div>
         </Card>
     );
 }

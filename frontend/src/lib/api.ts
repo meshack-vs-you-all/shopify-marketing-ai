@@ -29,9 +29,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - clear API key and redirect
+      // Handle unauthorized - clear auth tokens and redirect
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('api_key');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }
