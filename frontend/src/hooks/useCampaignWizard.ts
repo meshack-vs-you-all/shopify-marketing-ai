@@ -1,5 +1,3 @@
-''''use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -41,7 +39,7 @@ export function useCampaignWizard() {
         setLoading(true);
         setError(null);
         try {
-            let res;
+            let res: any;
             if (step === 1 && !data.id) {
                 res = await api.createCampaignDraft({ type: data.type, name: data.name || 'Untitled Campaign' });
                 setData(prev => ({ ...prev, id: res.data.id, name: res.data.name }));
@@ -93,4 +91,3 @@ export function useCampaignWizard() {
 
     return { data, currentStep, loading, error, updateData, nextStep, prevStep, finalize };
 }
-''''
