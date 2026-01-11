@@ -44,8 +44,28 @@ const envSchema = z.object({
   KLAVIYO_API_KEY: z.string().optional(),
   KLAVIYO_LIST_ID: z.string().optional(),
 
-  // Google Gemini
+  // AI & Content Generation
   GEMINI_API_KEY: z.string().optional(),
+  IMAGE_GENERATION_PROVIDER: z.enum(['placeholder', 'stability']).default('placeholder'),
+  STABILITY_API_KEY: z.string().optional(),
+
+  // AWS SES
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+  SES_FROM_EMAIL: z.string().optional(),
+
+  // Amazon SES SMTP (Optional, for sending via SMTP)
+  SES_SMTP_HOST: z.string().optional(),
+  SES_SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SES_SMTP_USER: z.string().optional(),
+  SES_SMTP_PASS: z.string().optional(),
+
+  // Google SMTP (Fallback)
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
 
   // Feature Flags
   ENABLE_AI_CONTENT_GENERATION: z.string().transform((val) => val === 'true').default('true'),
@@ -90,4 +110,3 @@ export function validateEnv(): void {
 export function getEnv() {
   return envSchema.parse(process.env);
 }
-
