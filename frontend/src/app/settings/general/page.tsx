@@ -14,6 +14,7 @@ export default function GeneralSettingsPage() {
                             <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
                                 Glowify Default Workspace
                             </div>
+                            <p className="mt-1 text-xs text-gray-400">Configured during initial setup.</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Primary Domain</label>
@@ -27,21 +28,27 @@ export default function GeneralSettingsPage() {
             </Card>
 
             <Card>
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Localization</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-900">Localization</h2>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Coming Soon
+                    </span>
+                </div>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Timezone</label>
-                            <select disabled className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-gray-50 text-gray-500">
+                            <select disabled className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-gray-50 text-gray-500 cursor-not-allowed">
                                 <option>UTC (Coordinated Universal Time)</option>
                             </select>
+                            <p className="mt-1 text-xs text-gray-400">Timezone customization will be available in a future update.</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Currency</label>
-                            <select disabled className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-gray-50 text-gray-500">
+                            <select disabled className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-gray-50 text-gray-500 cursor-not-allowed">
                                 <option>USD ($)</option>
                             </select>
-                            <p className="mt-1 text-xs text-gray-400">Synced from your Shopify store settings.</p>
+                            <p className="mt-1 text-xs text-gray-400">Currency is synced from your Shopify store settings.</p>
                         </div>
                     </div>
                 </div>
