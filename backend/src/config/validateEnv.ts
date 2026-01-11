@@ -41,7 +41,7 @@ const envSchema = z.object({
   GOOGLE_ADS_CUSTOMER_ID: z.string().optional(),
 
   // Email Platform (Optional)
-  KLAVIYO_API_KEY: z.string().optional(),
+  KLAVIYO_API_KEY: z.string().min(1, 'KLAVIYO_API_KEY is required for email campaigns'),
   KLAVIYO_LIST_ID: z.string().optional(),
 
   // AI & Content Generation

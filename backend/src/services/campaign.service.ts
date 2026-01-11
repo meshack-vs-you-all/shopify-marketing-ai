@@ -1,7 +1,8 @@
-''''import { prisma } from '../config/database';
+import { prisma } from '../config/database';
 import { Campaign, CampaignStatus, CampaignType, Platform } from '@prisma/client';
 import { logger } from '../utils/logger';
 import { metaAdsService } from './meta-ads.service';
+import { klaviyoService } from './klaviyo.service';
 
 export interface CreateDraftDTO {
   type: CampaignType;
@@ -38,9 +39,8 @@ class CampaignService {
         name: String(data.name),
         type: data.type,
         status: CampaignStatus.DRAFT,
-        // Set platform default based on type
-        platform: data.type === CampaignType.NEWSLETTER ? Platform.EMAIL : Platform.META
-      }
+        platform: data.type === CampaignType.NEWSLETTER ? Platform.EMAIL : Platform.META,
+      },
     });
   }
 
@@ -51,10 +51,10 @@ class CampaignService {
     return await prisma.campaign.findUnique({
       where: { id },
       include: {
-        emailList: true, // Helper to see list info
+        emailList: true,
         adSets: true,
-        metrics: true
-      }
+        metrics: true,
+      },
     });
   }
 
@@ -64,9 +64,7 @@ class CampaignService {
   async updateContent(id: string, data: UpdateContentDTO) {
     return await prisma.campaign.update({
       where: { id },
-      data: {
-        ...data,
-      }
+      data: { ...data },
     });
   }
 
@@ -80,14 +78,12 @@ class CampaignService {
 
     return await prisma.campaign.update({
       where: { id },
-      data: updateData
+      data: updateData,
     });
   }
 
   /**
-   * Finalize / Mark Ready
-   * For Newsletter: this might trigger immediate send or schedule
-   * For Meta: this will publish the ad to the Meta platform
+   * Finalize and prepare a campaign for its action (send, publish, etc.)
    */
   async finalize(id: string) {
     const campaign = await this.validateCampaign(id);
@@ -97,13 +93,12 @@ class CampaignService {
       if (!result.success) {
         throw new Error(result.error || 'Failed to publish to Meta');
       }
-      // Update campaign with the live ad ID and set status to active
       return await prisma.campaign.update({
         where: { id },
         data: { status: CampaignStatus.ACTIVE, externalId: result.adId },
       });
     } else {
-      // Existing logic for newsletters (mark as pending)
+      // For newsletters, we just mark as PENDING. The actual send is a separate step.
       return await prisma.campaign.update({
         where: { id },
         data: { status: CampaignStatus.PENDING },
@@ -111,25 +106,47 @@ class CampaignService {
     }
   }
 
+  /**
+   * Validates that a campaign has all the required fields to be finalized or sent.
+   */
   async validateCampaign(id: string): Promise<Campaign> {
-      const campaign = await prisma.campaign.findUnique({ where: { id } });
-      if (!campaign) throw new Error('Campaign not found');
+    const campaign = await prisma.campaign.findUnique({ where: { id } });
+    if (!campaign) throw new Error('Campaign not found');
 
-      if (campaign.type === CampaignType.NEWSLETTER) {
-          if (!campaign.emailListId) throw new Error('Audience (Email List) is required');
-          if (!campaign.subject || !campaign.htmlContent) throw new Error('Content (Subject & Body) is required');
-      } else if (campaign.type === CampaignType.META_AD) {
-          if (!campaign.primaryText || !campaign.headline) throw new Error('Ad Copy (Primary Text & Headline) is required');
-          if (!campaign.creativeUrl) throw new Error('An ad creative (image) is required');
-      }
-      return campaign;
+    if (campaign.type === CampaignType.NEWSLETTER) {
+      if (!campaign.emailListId) throw new Error('Audience (Email List) is required');
+      if (!campaign.subject || !campaign.htmlContent) throw new Error('Content (Subject & Body) is required');
+    } else if (campaign.type === CampaignType.META_AD) {
+      if (!campaign.primaryText || !campaign.headline) throw new Error('Ad Copy (Primary Text & Headline) is required');
+      if (!campaign.creativeUrl) throw new Error('An ad creative (image) is required');
+    }
+    return campaign;
   }
 
   /**
-   * Alias for createDraft to match route expectation
+   * Immediately sends a newsletter campaign via Klaviyo.
    */
-  async createCampaign(data: any) {
-    return this.createDraft(data);
+  async sendNow(id: string) {
+    const campaign = await this.validateCampaign(id);
+
+    if (campaign.type !== CampaignType.NEWSLETTER) {
+      throw new Error('Only newsletter campaigns can be sent.');
+    }
+
+    const result = await klaviyoService.sendCampaign(campaign);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to send campaign via Klaviyo');
+    }
+
+    logger.info(`Campaign ${id} successfully sent via Klaviyo. External ID: ${result.externalId}`);
+    return await prisma.campaign.update({
+      where: { id },
+      data: {
+        status: CampaignStatus.ACTIVE,
+        externalId: result.externalId,
+        sentAt: new Date(),
+      },
+    });
   }
 
   /**
@@ -138,7 +155,7 @@ class CampaignService {
   async getCampaignMetrics(id: string) {
     const campaign = await prisma.campaign.findUnique({
       where: { id },
-      include: { metrics: true }
+      include: { metrics: true },
     });
     return campaign?.metrics || [];
   }
@@ -152,46 +169,9 @@ class CampaignService {
       success: true,
       message: 'Optimization logic not yet implemented',
       actions: [] as any[],
-      recommendations: [] as any[]
+      recommendations: [] as any[],
     };
-  }
-
-  /**
-   * Deploy campaign stub
-   */
-  async deployCampaign(id: string) {
-    logger.info(`Deploying campaign ${id}`);
-    const campaign = await prisma.campaign.update({
-      where: { id },
-      data: { status: CampaignStatus.ACTIVE }
-    });
-    return campaign;
-  }
-
-  /**
-   * Trigger Send (Newsletter specific)
-   * This bridges to the existing BullMQ worker but using the generic ID
-   */
-  async sendNow(id: string) {
-    const { emailQueue, EMAIL_QUEUE_NAME } = require('../workers/queues');
-
-    // Ensure it's ready or draft
-    const campaign = await this.finalize(id);
-
-    if (campaign.type !== CampaignType.NEWSLETTER) {
-      throw new Error('Only newsletters can be "sent" directly');
-    }
-
-    // Add to queue with unified flag
-    await emailQueue.add(EMAIL_QUEUE_NAME, {
-      campaignId: id,
-      isUnified: true
-    });
-
-    logger.info(`Unified Campaign ${id} queued for sending`);
-    return campaign;
   }
 }
 
 export const campaignService = new CampaignService();
-''''
