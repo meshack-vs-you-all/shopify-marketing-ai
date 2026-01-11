@@ -21,31 +21,35 @@ export interface EmailOptions {
 
 export interface SendResult {
   messageId: string;
-  provider: 'SES' | 'SMTP' | 'DRY-RUN';
+  provider: 'SES_API' | 'SES_SMTP' | 'SMTP' | 'DRY-RUN' | 'NONE';
   success: boolean;
   error?: string;
 }
 
 export interface ConnectionStatus {
-  ses: boolean;
+  sesApi: boolean;
+  sesSmtp: boolean;
   smtp: boolean;
   details?: any;
 }
 
 /**
- * SES Email Service with Robust SMTP Fallback
- * Default: Try SES
- * Fallback: Try SMTP (Gmail/Google Workspace)
+ * Email Service with robust provider fallback.
+ * Priority:
+ * 1. AWS SES API
+ * 2. Amazon SES SMTP
+ * 3. Generic SMTP (e.g., Gmail)
  */
 class EmailService {
   private sesClient: SESClient | null = null;
-  private defaultFromEmail: string;
+  private sesSmtpTransporter: nodemailer.Transporter | null = null;
   private smtpTransporter: nodemailer.Transporter | null = null;
+  private defaultFromEmail: string;
 
   constructor() {
     const region = process.env.AWS_REGION || 'us-east-1';
 
-    // 1. Initialize SES (Primary)
+    // 1. Initialize SES API Client (Primary)
     if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
       this.sesClient = new SESClient({
         region,
@@ -55,51 +59,68 @@ class EmailService {
         }
       });
     } else {
-      logger.warn('AWS SES credentials missing. SES will be unavailable.');
+      logger.warn('AWS SES API credentials missing. SES API will be unavailable.');
     }
 
-    this.defaultFromEmail = process.env.SES_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || '';
+    // 2. Initialize SES SMTP Transporter (Secondary)
+    if (process.env.SES_SMTP_HOST && process.env.SES_SMTP_USER && process.env.SES_SMTP_PASS) {
+        const port = parseInt(process.env.SES_SMTP_PORT || '587');
+        this.sesSmtpTransporter = nodemailer.createTransport({
+            host: process.env.SES_SMTP_HOST,
+            port: port,
+            secure: port === 465, // true for 465, false for other ports like 587 (STARTTLS)
+            auth: {
+                user: process.env.SES_SMTP_USER,
+                pass: process.env.SES_SMTP_PASS
+            }
+        });
+    } else {
+        logger.info('Amazon SES SMTP credentials missing. SES SMTP will be unavailable.');
+    }
 
-    // 2. Initialize SMTP (Fallback)
-    if (process.env.SMTP_HOST) {
+    // 3. Initialize Generic SMTP Transporter (Fallback)
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const port = parseInt(process.env.SMTP_PORT || '587');
       this.smtpTransporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for others
+        port: port,
+        secure: port === 465,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS
         }
       });
+    } else {
+        logger.info('Generic SMTP credentials missing. Fallback SMTP will be unavailable.');
     }
+
+    this.defaultFromEmail = process.env.SES_FROM_EMAIL || process.env.SMTP_USER || '';
   }
 
-  /**
-   * Verify connections to configured providers
-   */
   async verifyConnection(): Promise<ConnectionStatus> {
-    const status: ConnectionStatus = { ses: false, smtp: false };
+    const status: ConnectionStatus = { sesApi: false, sesSmtp: false, smtp: false };
 
-    // Check SES
     if (this.sesClient) {
-      try {
-        // SES doesn't have a simple "ping", but we assume initialized client is 'ready' 
-        // if credentials were valid format. A real check would send a test email, 
-        // but for now we mark true if client exists.
-        status.ses = true;
-      } catch (err) {
-        logger.error('SES check failed', err);
-      }
+        status.sesApi = true; // Assuming client initializes if creds are set
     }
 
-    // Check SMTP
+    if (this.sesSmtpTransporter) {
+        try {
+            await this.sesSmtpTransporter.verify();
+            status.sesSmtp = true;
+            logger.info('SES SMTP connection verified');
+        } catch (err: any) {
+            logger.error('SES SMTP verify failed', err.message);
+        }
+    }
+
     if (this.smtpTransporter) {
       try {
         await this.smtpTransporter.verify();
         status.smtp = true;
-        logger.info('SMTP connection verified');
+        logger.info('Generic SMTP connection verified');
       } catch (err: any) {
-        logger.error('SMTP verify failed', err);
+        logger.error('Generic SMTP verify failed', err.message);
         status.details = err.message;
       }
     }
@@ -107,86 +128,61 @@ class EmailService {
     return status;
   }
 
-  /**
-   * Send a marketing email with fallback logic
-   */
   async sendMarketingEmail(options: EmailOptions): Promise<SendResult> {
     const from = options.fromEmail || this.defaultFromEmail;
-
     if (!from) {
-      return { success: false, messageId: '', provider: 'SES', error: 'From email address is required' };
+      return { success: false, messageId: '', provider: 'NONE', error: 'From email address is required' };
     }
 
-    // --- DRY RUN ---
     if (options.dryRun === true) {
-      logger.info(`[DRY-RUN] Would send email to: ${options.to} via SES/SMTP`);
-      return {
-        success: true,
-        messageId: 'dry-run-id',
-        provider: 'DRY-RUN'
-      };
+      logger.info(`[DRY-RUN] Would send email to: ${options.to}`);
+      return { success: true, messageId: 'dry-run-id', provider: 'DRY-RUN' };
     }
 
-    // --- ATTEMPT 1: SES (Primary - Switched by Request) ---
+    // --- ATTEMPT 1: SES API ---
     if (this.sesClient) {
       try {
-        const result = await this.sendViaSES(options, from);
-        return {
-          success: true,
-          messageId: result.MessageId || 'unknown',
-          provider: 'SES'
-        };
-      } catch (sesError: any) {
-        logger.warn('Failed to send via SES (Primary). Attempting fallback to SMTP...', { error: sesError.message });
-        // Proceed to fallback...
+        const result = await this.sendViaSESAPI(options, from);
+        return { success: true, messageId: result.MessageId || 'unknown', provider: 'SES_API' };
+      } catch (error: any) {
+        logger.warn('Failed to send via SES API. Falling back...', { error: error.message });
       }
     }
 
-    // --- ATTEMPT 2: SMTP (Fallback) ---
+    // --- ATTEMPT 2: SES SMTP ---
+    if (this.sesSmtpTransporter) {
+        try {
+            const info = await this.sendViaTransporter(options, from, this.sesSmtpTransporter);
+            return { success: true, messageId: info.messageId, provider: 'SES_SMTP' };
+        } catch (error: any) {
+            logger.warn('Failed to send via SES SMTP. Falling back...', { error: error.message });
+        }
+    }
+
+    // --- ATTEMPT 3: Generic SMTP ---
     if (this.smtpTransporter) {
       try {
-        const info = await this.sendViaSMTP(options, from);
-        return {
-          success: true,
-          messageId: info.messageId,
-          provider: 'SMTP'
-        };
-      } catch (smtpError: any) {
-        logger.error('Failed to send via SMTP (Fallback)', { error: smtpError.message });
-
-        return {
-          success: false,
-          messageId: '',
-          provider: 'SES', // default to SES for error reporting context if both fail
-          error: `SES Failed. SMTP Failed: ${smtpError.message}`
-        };
+        const info = await this.sendViaTransporter(options, from, this.smtpTransporter);
+        return { success: true, messageId: info.messageId, provider: 'SMTP' };
+      } catch (error: any) {
+        logger.error('Failed to send via Generic SMTP', { error: error.message });
+        return { success: false, messageId: '', provider: 'NONE', error: `All email providers failed. Final error: ${error.message}` };
       }
     }
 
-    // If we reach here, neither worked
-    return {
-      success: false,
-      messageId: '',
-      provider: 'SES', // defaulted
-      error: 'No email providers configured or all failed.'
-    };
+    return { success: false, messageId: '', provider: 'NONE', error: 'No email providers configured or all failed.' };
   }
 
-  /**
-   * Helper: Send via AWS SES
-   */
-  private async sendViaSES(options: EmailOptions, from: string) {
+  private async sendViaSESAPI(options: EmailOptions, from: string) {
     if (!this.sesClient) throw new Error('SES Client not initialized');
+    const rawMessage = await this.buildRawMessage(options, from);
+    const command = new SendRawEmailCommand({ RawMessage: { Data: Buffer.from(rawMessage) }, Source: from });
+    return await this.sesClient.send(command);
+  }
 
-    // Build raw message using Nodemailer (it's good at MIME)
-    const transporter = nodemailer.createTransport({
-      streamTransport: true,
-      newline: 'unix',
-      buffer: true
-    });
-
+  private async sendViaTransporter(options: EmailOptions, from: string, transporter: nodemailer.Transporter) {
     const mailOptions = {
-      from: from,
+      from,
       to: options.to,
       cc: options.cc,
       bcc: options.bcc,
@@ -194,41 +190,28 @@ class EmailService {
       subject: options.subject,
       html: options.htmlBody,
       text: options.textBody || this.stripHtml(options.htmlBody),
-      attachments: options.attachments
+      attachments: options.attachments,
     };
+    return await transporter.sendMail(mailOptions);
+  }
 
+  private async buildRawMessage(options: EmailOptions, from: string): Promise<string> {
+      const transporter = nodemailer.createTransport({ streamTransport: true, newline: 'unix', buffer: true });
+      const mailOptions = {
+        from,
+        to: options.to,
+        cc: options.cc,
+        bcc: options.bcc,
+        replyTo: options.replyTo,
+        subject: options.subject,
+        html: options.htmlBody,
+        text: options.textBody || this.stripHtml(options.htmlBody),
+        attachments: options.attachments
+    };
     const info = await transporter.sendMail(mailOptions);
-    const rawMessage = info.message.toString();
-
-    const command = new SendRawEmailCommand({
-      RawMessage: { Data: Buffer.from(rawMessage) },
-      Source: from,
-    });
-
-    return await this.sesClient.send(command);
+    return info.message.toString();
   }
 
-  /**
-   * Helper: Send via I SMTP
-   */
-  private async sendViaSMTP(options: EmailOptions, from: string) {
-    if (!this.smtpTransporter) throw new Error('SMTP Config missing');
-
-    const mailOptions = {
-      from: from,
-      to: options.to,
-      subject: options.subject,
-      html: options.htmlBody,
-      text: options.textBody || this.stripHtml(options.htmlBody),
-      attachments: options.attachments
-    };
-
-    return await this.smtpTransporter.sendMail(mailOptions);
-  }
-
-  /**
-   * Simple HTML stripper for fallback text body
-   */
   private stripHtml(html: string): string {
     return html.replace(/<[^>]*>?/gm, '');
   }

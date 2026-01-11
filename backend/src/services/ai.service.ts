@@ -1,30 +1,57 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from '../utils/logger';
+import {
+  ImageGenerationProvider,
+  ImageGenerationParams,
+  PlaceholderProvider,
+  StabilityAIProvider,
+} from './ai/image-generation';
 
 /**
  * AI Content Generation Service
- * Uses Google Gemini to generate marketing content
  */
 class AIService {
   private genAI!: GoogleGenerativeAI;
   private model: string = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+  private imageProvider!: ImageGenerationProvider;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      console.error('CRITICAL: Gemini API key NOT FOUND');
-      logger.warn('Gemini API key not configured');
-      // @ts-ignore
-      return;
+    // Initialize Text Generation (Gemini)
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (geminiApiKey) {
+      this.genAI = new GoogleGenerativeAI(geminiApiKey);
+      logger.info('Google Gemini service initialized.');
+    } else {
+      logger.warn('GEMINI_API_KEY not found. Text generation will be disabled.');
     }
-    console.log('Gemini Service Initialized with Key:', apiKey.substring(0, 5) + '...');
-    this.genAI = new GoogleGenerativeAI(apiKey);
+
+    // Initialize Image Generation Provider
+    this.initializeImageProvider();
   }
 
-  /**
-   * Generate ad copy for Meta/Google Ads
-   */
+  private initializeImageProvider() {
+    const providerType = process.env.IMAGE_GENERATION_PROVIDER || 'placeholder';
+    logger.info(`Initializing image generation with provider: ${providerType}`);
+
+    switch (providerType) {
+      case 'stability':
+        const stabilityApiKey = process.env.STABILITY_API_KEY;
+        if (stabilityApiKey) {
+          this.imageProvider = new StabilityAIProvider(stabilityApiKey);
+          logger.info('Stability AI provider initialized.');
+        } else {
+          logger.error('STABILITY_API_KEY is missing. Falling back to placeholder provider.');
+          this.imageProvider = new PlaceholderProvider();
+        }
+        break;
+      case 'placeholder':
+      default:
+        this.imageProvider = new PlaceholderProvider();
+        break;
+    }
+  }
+
+  // ... (all text generation methods like generateAdCopy, etc. remain unchanged)
   async generateAdCopy(params: {
     productName: string;
     productDescription: string;
@@ -230,53 +257,29 @@ Provide:
       throw new Error(`Failed to analyze performance: ${error.message}`);
     }
   }
-
   /**
-   * Generate Image (Experimental)
-   * Note: This requires a model that supports image generation (e.g., Imagen)
+   * Generate an image using the configured provider.
    */
-  async generateImage(params: {
-    prompt: string;
-    aspectRatio?: '1:1' | '16:9' | '9:16';
-    model?: string;
-  }): Promise<string> {
+  async generateImage(params: ImageGenerationParams): Promise<string> {
     try {
-      // NOTE: The current GoogleGenerativeAI SDK for Node.js is primarily for text/multimodal inputs -> text output.
-      // Image generation often requires specific REST calls to Imagen on Vertex AI or specific Gemini models.
-      // For now, we return a graceful placeholder image URL.
-
-      // Determine dimensions based on aspect ratio
-      const dimensions = {
-        '1:1': { width: 512, height: 512 },
-        '16:9': { width: 1280, height: 720 },
-        '9:16': { width: 720, height: 1280 }
-      };
-
-      const { width, height } = dimensions[params.aspectRatio || '1:1'];
-
-      // Return a placeholder image from a reliable service
-      // Using placehold.co as it's simple and reliable
-      const placeholderUrl = `https://placehold.co/${width}x${height}/1a1a2e/eee?text=AI+Image+Coming+Soon`;
-
-      logger.info('Image generation requested - returning placeholder', {
-        prompt: params.prompt.substring(0, 50),
-        aspectRatio: params.aspectRatio
-      });
-
-      return placeholderUrl;
-
-      /* 
-      // Future implementation when SDK supports it or via REST:
-      const modelName = params.model || 'imagen-3.0-generate-001'; 
-      // ... call api ...
-      */
+      if (!this.imageProvider) {
+        throw new Error('Image generation provider is not initialized.');
+      }
+      return await this.imageProvider.generate(params);
     } catch (error: any) {
-      logger.error('Error generating image', { error: error.message, params });
-      throw new Error(`Failed to generate image: ${error.message}`);
+      logger.error('Error generating image via provider', { error: error.message, params });
+      // Fallback to placeholder if the provider fails
+      try {
+        return await new PlaceholderProvider().generate(params);
+      } catch (fallbackError: any) {
+        logger.error('Fallback placeholder provider also failed', { error: fallbackError.message });
+        // As a final resort, return a hardcoded URL
+        return 'https://placehold.co/512x512/ff0000/ffffff?text=Error';
+      }
     }
   }
 
-  // Helper methods
+  // ... (all private helper methods like buildAdCopyPrompt, etc. remain unchanged)
   private buildAdCopyPrompt(params: any): string {
     return `Generate ${params.numberOfVariations || 3} variations of ad copy for:
 
@@ -417,4 +420,3 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
 
 export const aiService = new AIService();
 export default aiService;
-
