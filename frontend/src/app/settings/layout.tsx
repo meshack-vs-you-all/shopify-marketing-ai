@@ -20,8 +20,8 @@ const settingsNav = [
     { name: 'Account & Access', href: '/settings/account', icon: UserCircleIcon },
     { name: 'Authentication', href: '/settings/auth', icon: KeyIcon },
     { name: 'Email & Sending', href: '/settings/email', icon: EnvelopeIcon },
-    { name: 'Campaign Defaults', href: '/settings/campaigns', icon: MegaphoneIcon, disabled: true },
-    { name: 'Meta Ads', href: '/settings/meta', icon: MegaphoneIcon, disabled: true }, // Merged or separate? Keeping placeholders
+    { name: 'Meta Ads', href: '/settings/meta', icon: MegaphoneIcon },
+    { name: 'AI & Automations', href: '/settings/ai', icon: CpuChipIcon },
     { name: 'Notifications', href: '/settings/notifications', icon: BellIcon, disabled: true },
     { name: 'Billing', href: '/settings/billing', icon: CreditCardIcon, hidden: true },
     { name: 'System', href: '/settings/system', icon: CpuChipIcon },
