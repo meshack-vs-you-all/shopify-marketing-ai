@@ -2,7 +2,6 @@
 import { WizardData } from '@/hooks/useCampaignWizard';
 import { api } from '@/lib/api';
 import { SparklesIcon } from '@heroicons/react/24/outline';
-import { useState } from 'react';
 
 interface Props {
     data: WizardData;
@@ -11,6 +10,12 @@ interface Props {
     setGenerating: (field: string | null) => void;
     setError: (error: string | null) => void;
 }
+
+const campaignTypeOptions = [
+    { value: 'promotional', label: 'Promotional' },
+    { value: 'announcement', label: 'Announcement' },
+    { value: 'newsletter', label: 'Newsletter' },
+];
 
 export default function NewsletterContent({ data, updateData, generating, setGenerating, setError }: Props) {
     const generate = async (field: 'subject' | 'body') => {
@@ -21,7 +26,7 @@ export default function NewsletterContent({ data, updateData, generating, setGen
             const res = await api.generateEmailContent({
                 type: field,
                 subject: data.subject || 'A marketing email',
-                campaignType: 'promotional',
+                campaignType: data.campaignType || 'promotional',
                 model: 'gemini-1.5-flash'
             });
 
@@ -43,6 +48,20 @@ export default function NewsletterContent({ data, updateData, generating, setGen
 
     return (
         <div className="space-y-6">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <label htmlFor="campaignType" className="block text-sm font-semibold text-gray-700 mb-2">Campaign Type</label>
+                <select
+                    id="campaignType"
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3"
+                    value={data.campaignType || ''}
+                    onChange={(e) => updateData({ campaignType: e.target.value })}
+                >
+                    {campaignTypeOptions.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                </select>
+            </div>
+
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center mb-2">
                     <label htmlFor="emailSubject" className="block text-sm font-semibold text-gray-700">Subject Line</label>

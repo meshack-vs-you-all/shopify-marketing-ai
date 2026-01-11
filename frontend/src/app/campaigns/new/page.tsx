@@ -24,12 +24,14 @@ export default function NewCampaignPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [aiPreview, setAiPreview] = useState<any>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
+    getValues,
   } = useForm<CampaignFormData>({
     resolver: zodResolver(campaignSchema),
     defaultValues: {
@@ -40,6 +42,20 @@ export default function NewCampaignPage() {
 
   const platform = watch('platform');
 
+  const handleGeneratePreview = async () => {
+    try {
+      setIsGenerating(true);
+      setError('');
+      const values = getValues();
+      const response = await api.generateCampaignContent(values);
+      setAiPreview(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to generate AI content');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const onSubmit = async (data: CampaignFormData) => {
     try {
       setLoading(true);
@@ -49,6 +65,7 @@ export default function NewCampaignPage() {
         ...data,
         budget: Number(data.budget),
         dailyBudget: data.dailyBudget ? Number(data.dailyBudget) : undefined,
+        aiContent: aiPreview,
       });
 
       if (response.data.approval) {
@@ -159,24 +176,47 @@ export default function NewCampaignPage() {
             </div>
           )}
 
-          {/* AI Preview (if available) */}
-          {aiPreview && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-medium text-blue-900 mb-2">AI-Generated Content Preview</h3>
-              <div className="space-y-2 text-sm text-blue-800">
-                {aiPreview.headlines && (
-                  <div>
-                    <strong>Headlines:</strong>
-                    <ul className="list-disc list-inside ml-2">
-                      {aiPreview.headlines.map((h: string, i: number) => (
-                        <li key={i}>{h}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+          {/* AI Preview Section */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-medium text-gray-900">AI Content Generation</h3>
+              <button
+                type="button"
+                onClick={handleGeneratePreview}
+                disabled={isGenerating}
+                className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition disabled:opacity-50"
+              >
+                {isGenerating ? 'Generating...' : '✨ Generate with AI'}
+              </button>
             </div>
-          )}
+            {aiPreview && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                <h3 className="font-medium text-blue-900 mb-2">AI-Generated Content Preview</h3>
+                <div className="space-y-2 text-sm text-blue-800">
+                  {aiPreview.headlines && (
+                    <div>
+                      <strong>Headlines:</strong>
+                      <ul className="list-disc list-inside ml-2">
+                        {aiPreview.headlines.map((h: string, i: number) => (
+                          <li key={i}>{h}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {aiPreview.descriptions && (
+                    <div className="mt-2">
+                      <strong>Descriptions:</strong>
+                      <ul className="list-disc list-inside ml-2">
+                        {aiPreview.descriptions.map((d: string, i: number) => (
+                          <li key={i}>{d}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Submit Buttons */}
           <div className="flex justify-end space-x-4">
@@ -200,4 +240,3 @@ export default function NewCampaignPage() {
     </ProtectedRoute>
   );
 }
-

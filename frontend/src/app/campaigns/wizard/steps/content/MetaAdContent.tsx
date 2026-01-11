@@ -14,12 +14,13 @@ interface Props {
 
 export default function MetaAdContent({ data, updateData, generating, setGenerating, setError }: Props) {
     const [prompt, setPrompt] = useState('A futuristic cityscape at sunset, with flying cars and neon signs, in a photorealistic style.');
+    const [provider, setProvider] = useState('stability');
 
     const generateImage = async () => {
         try {
             setGenerating('image');
             setError(null);
-            const res = await api.generateImage({ prompt, provider: 'stability' });
+            const res = await api.generateImage({ prompt, provider });
             const imageUrl = res.data.url;
             updateData({ creativeUrl: imageUrl });
         } catch (err) {
@@ -92,14 +93,24 @@ export default function MetaAdContent({ data, updateData, generating, setGenerat
                             onChange={(e) => setPrompt(e.target.value)}
                             placeholder="Enter a detailed prompt for the image..."
                         />
-                        <button
-                            type="button"
-                            onClick={generateImage}
-                            disabled={!!generating}
-                            className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                            {generating === 'image' ? 'Generating...' : 'Generate Image'}
-                        </button>
+                        <div className="flex items-center gap-2 mt-2">
+                            <select
+                                value={provider}
+                                onChange={(e) => setProvider(e.target.value)}
+                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
+                            >
+                                <option value="stability">Stability AI</option>
+                                <option value="dall-e-3">DALL-E 3</option>
+                            </select>
+                            <button
+                                type="button"
+                                onClick={generateImage}
+                                disabled={!!generating}
+                                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {generating === 'image' ? 'Generating...' : 'Generate Image'}
+                            </button>
+                        </div>
                     </div>
                     <div className="flex items-center justify-center">
                         {generating === 'image' ? (

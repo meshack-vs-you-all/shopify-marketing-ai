@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+'''import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -58,7 +58,7 @@ export class AuthService {
             where: { email: data.email }
         });
 
-        if (!user) {
+        if (!user || !user.passwordHash) {
             throw new AppError('Invalid credentials', 401, 'auth_failed');
         }
 
@@ -88,3 +88,4 @@ export class AuthService {
 }
 
 export const authService = new AuthService();
+'''

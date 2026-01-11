@@ -50,7 +50,12 @@ export default function NewsletterAudience({ data, updateData }: Props) {
                         </div>
                     ))}
                     {lists.length === 0 && (
-                        <p className="text-red-500">No lists found. Please create a list in Audience Manager first.</p>
+                        <div className="text-center py-6 bg-gray-50 rounded-lg">
+                            <p className="text-gray-600 mb-4">No email lists found.</p>
+                            <a href="/email/lists/new" target="_blank" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">
+                                Create New List
+                            </a>
+                        </div>
                     )}
                 </div>
             )}
