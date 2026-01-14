@@ -16,7 +16,7 @@ import './workers/email.worker'; // Initialize email worker
 validateEnv();
 
 const app: Express = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Security middleware
 app.use(helmet());
@@ -98,8 +98,8 @@ app.use((req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
+// Start server - bind to 0.0.0.0 for Railway/Docker compatibility
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
@@ -116,4 +116,3 @@ process.on('SIGINT', () => {
 });
 
 export default app;
-
