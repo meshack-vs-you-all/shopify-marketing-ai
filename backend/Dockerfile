@@ -12,9 +12,9 @@ COPY shared ./shared
 
 # Setup backend
 WORKDIR /app/backend
-COPY backend/package.json backend/pnpm-lock.yaml ./ 
-COPY backend/tsconfig.json ./
-COPY backend/prisma ./prisma/
+COPY package.json pnpm-lock.yaml ./ 
+COPY tsconfig.json ./
+COPY prisma ./prisma/
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -26,7 +26,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm prisma generate --schema=./prisma/schema.prisma
 
 # Copy backend source code
-COPY backend/ .
+COPY . .
 
 # Symlink node_modules for shared folder resolution
 RUN ln -s /app/backend/node_modules /app/node_modules
