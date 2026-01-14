@@ -91,6 +91,12 @@ export const api = {
   deployCampaign: (id: string) =>
     apiClient.post(`/api/campaigns/${id}/deploy`),
 
+  updateCampaign: (id: string, data: any) =>
+    apiClient.patch(`/api/campaigns/${id}`, data),
+
+  deleteCampaign: (id: string) =>
+    apiClient.delete(`/api/campaigns/${id}`),
+
   // Approvals
   getApprovals: () =>
     apiClient.get('/api/approvals'),

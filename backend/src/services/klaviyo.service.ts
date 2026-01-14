@@ -3,7 +3,7 @@ import { getEnv } from '../config/validateEnv';
 import { logger } from '../utils/logger';
 import { prisma } from '../config/database';
 
-const KLAVIYO_API_KEY = getEnv().KLAVIYO_API_KEY;
+const KLAVIYO_API_KEY = process.env.KLAVIYO_API_KEY || '';
 const API_URL = 'https://a.klaviyo.com/api';
 
 interface KlaviyoCampaign {
@@ -16,6 +16,11 @@ interface KlaviyoCampaign {
 
 class KlaviyoService {
   private async makeApiRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT', body?: any) {
+    if (!KLAVIYO_API_KEY) {
+      logger.warn('Klaviyo API key not configured, skipping API call');
+      throw new Error('Klaviyo integration not configured');
+    }
+
     const headers = {
       Authorization: `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
       accept: 'application/json',

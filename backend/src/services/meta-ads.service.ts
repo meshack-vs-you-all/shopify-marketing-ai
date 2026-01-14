@@ -1,6 +1,6 @@
-''''use-strict';
-import { Campaign } from '@/db/schema';
-import logger from '@/lib/logger';
+'use strict';
+import { Campaign } from '@prisma/client';
+import { logger } from '../utils/logger';
 
 const META_APP_ID = process.env.META_APP_ID;
 const META_APP_SECRET = process.env.META_APP_SECRET;
@@ -111,4 +111,3 @@ class MetaAdsService {
 }
 
 export const metaAdsService = new MetaAdsService();
-''''

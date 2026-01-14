@@ -1,4 +1,4 @@
-'''import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -88,4 +88,3 @@ export class AuthService {
 }
 
 export const authService = new AuthService();
-'''
