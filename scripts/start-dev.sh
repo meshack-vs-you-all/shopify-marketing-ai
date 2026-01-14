@@ -53,7 +53,7 @@ done
 
 if [ ${#CONFLICTS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Found ${#CONFLICTS[@]} port conflict(s)${NC}"
-    
+
     if [ "$DRY_RUN" = true ]; then
         echo -e "${YELLOW}[DRY-RUN] Would prompt to kill the following processes:${NC}"
         for conflict in "${CONFLICTS[@]}"; do
@@ -64,7 +64,7 @@ if [ ${#CONFLICTS[@]} -gt 0 ]; then
     else
         echo -e "Would you like to kill these processes? (y/N): "
         read -r response
-        
+
         if [[ "$response" =~ ^[Yy]$ ]]; then
             for conflict in "${CONFLICTS[@]}"; do
                 pid=$(echo $conflict | cut -d: -f2)
