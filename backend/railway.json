@@ -1,12 +1,11 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
-  "root": "./",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install && npx prisma generate && npm run build"
+    "buildCommand": "npm install && npx prisma generate --schema=./prisma/schema.prisma && npm run build"
   },
   "deploy": {
-    "startCommand": "npx prisma migrate deploy && npm start",
+    "startCommand": "npx prisma migrate deploy --schema=./prisma/schema.prisma && npm start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",

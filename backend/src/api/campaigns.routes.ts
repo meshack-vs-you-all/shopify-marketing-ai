@@ -162,5 +162,49 @@ router.post('/:id/deploy', validateParams(campaignIdSchema), async (req, res, ne
   }
 });
 
+/**
+ * PATCH /api/campaigns/:id
+ * Update campaign details
+ */
+router.patch('/:id', validateParams(campaignIdSchema), validateBody(updateCampaignSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const campaign = await prisma.campaign.update({
+      where: { id },
+      data: req.body,
+    });
+    res.json({ campaign });
+  } catch (error: any) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/campaigns/:id
+ * Delete a campaign
+ */
+router.delete('/:id', validateParams(campaignIdSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Check if campaign exists
+    const campaign = await prisma.campaign.findUnique({ where: { id } });
+    if (!campaign) {
+      throw new AppError('Campaign not found', 404);
+    }
+
+    // Delete related records first (cascade not automatic for all relations)
+    await prisma.approval.deleteMany({ where: { campaignId: id } });
+    await prisma.campaignMetric.deleteMany({ where: { campaignId: id } });
+
+    // Delete the campaign
+    await prisma.campaign.delete({ where: { id } });
+
+    res.json({ message: 'Campaign deleted successfully' });
+  } catch (error: any) {
+    next(error);
+  }
+});
+
 export default router;
 
