@@ -93,3 +93,4 @@ backend/scripts/simulate_launch.ts
 backend/scripts/verify_sandbox_recipients.ts
 backend/scripts/meta_token_exchange.ts
 backend/scripts/exchange_meta.ts
+auth/google/secrets.txt
