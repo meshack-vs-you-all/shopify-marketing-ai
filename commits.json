@@ -1,0 +1,22 @@
+[
+    {
+        "hash": "cbd2486",
+        "message": "docs(deployment): add railway status report",
+        "branch": "audit/atomic-commits-20260115-1858"
+    },
+    {
+        "hash": "5ab4fb6",
+        "message": "fix(deps): add missing runtime dependencies",
+        "branch": "audit/atomic-commits-20260115-1858"
+    },
+    {
+        "hash": "8db8a90",
+        "message": "infra(docker): update dockerfiles for root context execution",
+        "branch": "audit/atomic-commits-20260115-1858"
+    },
+    {
+        "hash": "b1577da",
+        "message": "infra(railway): configure monorepo deployment strategy",
+        "branch": "audit/atomic-commits-20260115-1858"
+    }
+]
