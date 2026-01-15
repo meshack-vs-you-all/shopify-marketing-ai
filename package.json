@@ -20,6 +20,8 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@railway/cli": "^4.25.1"
   }
 }
-
