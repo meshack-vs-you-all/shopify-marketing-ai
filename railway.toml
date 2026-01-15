@@ -1,0 +1,8 @@
+[services.backend]
+build.builder = "DOCKER"
+build.dockerfilePath = "backend/Dockerfile"
+# Context is root by default, which is required for 'shared' folder access
+
+[services.frontend]
+build.builder = "DOCKER"
+build.dockerfilePath = "frontend/Dockerfile"

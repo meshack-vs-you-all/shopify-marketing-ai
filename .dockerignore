@@ -26,7 +26,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Large directories not needed for backend build
-frontend
+# frontend
 docs
 .github
 
