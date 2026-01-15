@@ -1,22 +1,27 @@
 [
     {
-        "hash": "cbd2486",
-        "message": "docs(deployment): add railway status report",
-        "branch": "audit/atomic-commits-20260115-1858"
+        "hash": "7b7c386",
+        "message": "docs(auth): add env var and Google Console config doc",
+        "validate": "Check auth/google/README.md"
     },
     {
-        "hash": "5ab4fb6",
-        "message": "fix(deps): add missing runtime dependencies",
-        "branch": "audit/atomic-commits-20260115-1858"
+        "hash": "685c48b",
+        "message": "feat(admin): add ensure-admin seed script for meshackmogire406@gmail.com",
+        "validate": "Run npx tsx backend/scripts/ensure-admin.ts"
     },
     {
-        "hash": "8db8a90",
-        "message": "infra(docker): update dockerfiles for root context execution",
-        "branch": "audit/atomic-commits-20260115-1858"
+        "hash": "8435d3b",
+        "message": "feat(auth): add NextAuth.js Google provider and user callbacks",
+        "validate": "Visit /test-auth and click Sign In"
     },
     {
-        "hash": "b1577da",
-        "message": "infra(railway): configure monorepo deployment strategy",
-        "branch": "audit/atomic-commits-20260115-1858"
+        "hash": "eda124c",
+        "message": "feat(auth): add google login upsert logic to backend",
+        "validate": "POST /api/auth/google with valid payload"
+    },
+    {
+        "hash": "bee64f1",
+        "message": "feat(auth): add google login upsert logic to backend (Partial/Failed)",
+        "validate": "See follow-up commit eda124c"
     }
 ]
