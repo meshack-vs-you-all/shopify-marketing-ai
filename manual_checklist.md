@@ -9,12 +9,12 @@
 Run these immediately after deployment indicates "Success".
 
 ### Frontend
-- **Command**: `curl -I https://frontend-production-54b3.up.railway.app/`
+- **Command**: `curl -I https://marketing.glowifybabystores.com/`
 - **Expect**: `HTTP/2 200`
 - **Manual**: Open URL in browser. Should see "Glowify Marketing AI" landing page.
 
 ### Backend Health
-- **Command**: `curl -v https://backend-production-f464.up.railway.app/health`
+- **Command**: `curl -v https://api.marketing.glowifybabystores.com/health`
 - **Expect**: `{"status":"ok"}` (or similar 200 OK JSON)
 - **Check**: If 404/502, check Railway Deployment Logs > Backend > Deploy Logs.
 

@@ -55,8 +55,8 @@ If a deployment fails or introduces a critical bug:
 
 ## 🧪 Post-Deploy Verification
 After "Success" status:
-1. Check **Health Endpoint**: `curl https://<BACKEND_URL>/health`
-2. Check **Frontend Load**: `curl -I https://<FRONTEND_URL>/`
+1. Check **Health Endpoint**: `curl https://api.marketing.glowifybabystores.com/health`
+2. Check **Frontend Load**: `curl -I https://marketing.glowifybabystores.com/`
 3. Check **Logs for Errors**: `railway logs --service backend --limit 50 --filter "Error"`
 
 ## 📝 Configuration Variables

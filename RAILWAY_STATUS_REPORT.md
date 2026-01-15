@@ -61,7 +61,7 @@ This means:
 
 | Variable | Current Value | Recommendation |
 |----------|---------------|----------------|
-| `FRONTEND_URL` | `https://your-frontend.railway.app` | Update to actual frontend URL |
+| `FRONTEND_URL` | `https://marketing.glowifybabystores.com` | Update to actual frontend URL |
 | `GEMINI_API_KEY` | `your_gemini_api_key` | Set actual Gemini API key for AI features |
 | `SES_FROM_EMAIL` | Not set | Required for email sending |
 
