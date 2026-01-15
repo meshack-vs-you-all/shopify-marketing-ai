@@ -1,8 +1,8 @@
 import { prisma } from '../config/database';
-import { Campaign, CampaignStatus, CampaignType, Platform } from '@prisma/client';
+import { Campaign, CampaignStatus, CampaignType, Platform, Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
 import { metaAdsService } from './meta-ads.service';
-import { klaviyoService } from './klaviyo.service';
+import { emailService } from './email.service';
 
 export interface CreateDraftDTO {
   type: CampaignType;
@@ -27,7 +27,62 @@ export interface SetAudienceDTO {
   targetAudience?: any; // JSON
 }
 
+/**
+ * DTO for creating a full campaign (used by /api/campaigns POST)
+ */
+export interface CreateCampaignDTO {
+  platform: 'META' | 'GOOGLE_ADS' | 'EMAIL';
+  productIds?: string[];
+  budget: number;
+  dailyBudget?: number;
+  objective: string;
+  targetAudience?: {
+    ageMin?: number;
+    ageMax?: number;
+    genders?: number[];
+    interests?: string[];
+    locations?: string[];
+    description?: string;
+  };
+  autoApprove?: boolean;
+}
+
 class CampaignService {
+
+  /**
+   * Create a full campaign with all parameters
+   */
+  async createCampaign(data: CreateCampaignDTO): Promise<{ campaign: Campaign; requiresApproval: boolean }> {
+    logger.info(`Creating campaign: platform=${data.platform}, objective=${data.objective}`);
+
+    // Determine campaign type based on platform
+    const type = data.platform === 'EMAIL' ? CampaignType.NEWSLETTER : CampaignType.META_AD;
+    const platform = data.platform === 'EMAIL' ? Platform.EMAIL :
+      data.platform === 'GOOGLE_ADS' ? Platform.GOOGLE_ADS : Platform.META;
+
+    // Generate campaign name based on objective and date
+    const campaignName = `${data.objective} - ${new Date().toLocaleDateString()}`;
+
+    const campaign = await prisma.campaign.create({
+      data: {
+        name: campaignName,
+        type,
+        platform,
+        status: data.autoApprove ? CampaignStatus.PENDING : CampaignStatus.DRAFT,
+        budget: new Prisma.Decimal(data.budget),
+        dailyBudget: data.dailyBudget ? new Prisma.Decimal(data.dailyBudget) : undefined,
+        objective: data.objective,
+        targetAudience: data.targetAudience ? data.targetAudience : undefined,
+      },
+    });
+
+    logger.info(`Campaign created: id=${campaign.id}, name=${campaign.name}`);
+
+    return {
+      campaign,
+      requiresApproval: !data.autoApprove,
+    };
+  }
 
   /**
    * Create a generic campaign draft
@@ -83,6 +138,34 @@ class CampaignService {
   }
 
   /**
+   * Deploy campaign to its target platform (Meta, Google, or send email)
+   */
+  async deployCampaign(id: string): Promise<Campaign> {
+    const campaign = await this.validateCampaign(id);
+    logger.info(`Deploying campaign ${id} to platform: ${campaign.platform}`);
+
+    if (campaign.type === CampaignType.META_AD) {
+      const result = await metaAdsService.publishCampaign(campaign);
+      if (!result.success) {
+        await this.updateCampaignStatus(id, CampaignStatus.FAILED);
+        throw new Error(result.error || 'Failed to deploy to Meta');
+      }
+      return await prisma.campaign.update({
+        where: { id },
+        data: {
+          status: CampaignStatus.ACTIVE,
+          externalId: result.adId,
+        },
+      });
+    } else if (campaign.type === CampaignType.NEWSLETTER) {
+      // Send newsletter via email service
+      return await this.sendNewsletter(campaign);
+    }
+
+    throw new Error(`Unsupported campaign type: ${campaign.type}`);
+  }
+
+  /**
    * Finalize and prepare a campaign for its action (send, publish, etc.)
    */
   async finalize(id: string) {
@@ -124,7 +207,87 @@ class CampaignService {
   }
 
   /**
-   * Immediately sends a newsletter campaign via Klaviyo.
+   * Send a newsletter campaign via the email service (SES/SMTP)
+   */
+  private async sendNewsletter(campaign: Campaign): Promise<Campaign> {
+    if (!campaign.emailListId) {
+      throw new Error('Email list is required for newsletter campaigns');
+    }
+
+    // Get subscribers from the email list
+    const subscribers = await prisma.subscriber.findMany({
+      where: {
+        listId: campaign.emailListId,
+        status: 'SUBSCRIBED',
+      },
+    });
+
+    if (subscribers.length === 0) {
+      throw new Error('No active subscribers in the email list');
+    }
+
+    logger.info(`Sending newsletter to ${subscribers.length} subscribers`);
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    // Send emails to all subscribers
+    for (const subscriber of subscribers) {
+      try {
+        const result = await emailService.sendMarketingEmail({
+          to: subscriber.email,
+          subject: campaign.subject || 'Newsletter',
+          htmlBody: campaign.htmlContent || '',
+          textBody: campaign.textContent || undefined,
+        });
+
+        // Log delivery
+        await prisma.emailDeliveryLog.create({
+          data: {
+            campaignId: campaign.id,
+            subscriberId: subscriber.id,
+            status: result.success ? 'SENT' : 'FAILED',
+            messageId: result.messageId || null,
+            errorMessage: result.error || null,
+          },
+        });
+
+        if (result.success) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
+      } catch (error: any) {
+        logger.error(`Failed to send to ${subscriber.email}:`, error.message);
+        failedCount++;
+
+        await prisma.emailDeliveryLog.create({
+          data: {
+            campaignId: campaign.id,
+            subscriberId: subscriber.id,
+            status: 'FAILED',
+            errorMessage: error.message,
+          },
+        });
+      }
+    }
+
+    logger.info(`Newsletter sent: ${sentCount} successful, ${failedCount} failed`);
+
+    // Update campaign with results
+    return await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: {
+        status: failedCount === subscribers.length ? CampaignStatus.FAILED : CampaignStatus.ACTIVE,
+        sentCount,
+        failedCount,
+        sentAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Immediately sends a newsletter campaign
    */
   async sendNow(id: string) {
     const campaign = await this.validateCampaign(id);
@@ -133,19 +296,16 @@ class CampaignService {
       throw new Error('Only newsletter campaigns can be sent.');
     }
 
-    const result = await klaviyoService.sendCampaign(campaign);
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to send campaign via Klaviyo');
-    }
+    return await this.sendNewsletter(campaign);
+  }
 
-    logger.info(`Campaign ${id} successfully sent via Klaviyo. External ID: ${result.externalId}`);
+  /**
+   * Update campaign status
+   */
+  private async updateCampaignStatus(id: string, status: CampaignStatus): Promise<Campaign> {
     return await prisma.campaign.update({
       where: { id },
-      data: {
-        status: CampaignStatus.ACTIVE,
-        externalId: result.externalId,
-        sentAt: new Date(),
-      },
+      data: { status },
     });
   }
 

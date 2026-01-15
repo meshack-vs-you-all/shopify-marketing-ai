@@ -23,7 +23,7 @@ router.get('/integrations', async (req, res) => {
         const emailConnection = await emailService.verifyConnection();
         const emailStatus = {
             ses: {
-                connected: emailConnection.ses,
+                connected: emailConnection.sesApi,
                 region: process.env.AWS_REGION || 'us-east-1',
                 sendingDomain: process.env.SES_FROM_EMAIL ? process.env.SES_FROM_EMAIL.split('@')[1] : null,
                 identity: process.env.SES_FROM_EMAIL || null

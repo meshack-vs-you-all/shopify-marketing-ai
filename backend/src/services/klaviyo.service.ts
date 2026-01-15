@@ -14,6 +14,12 @@ interface KlaviyoCampaign {
   };
 }
 
+/**
+ * Klaviyo Service
+ * NOTE: This service is currently disabled pending Klaviyo API integration.
+ * Email sending is handled directly via email.service.ts (SES/SMTP).
+ * To enable Klaviyo, set KLAVIYO_API_KEY in environment and configure email lists with externalId.
+ */
 class KlaviyoService {
   private async makeApiRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT', body?: any) {
     if (!KLAVIYO_API_KEY) {
@@ -49,8 +55,9 @@ class KlaviyoService {
   async sendCampaign(dbCampaign: Campaign): Promise<{ success: boolean; externalId?: string; error?: string }> {
     try {
       const emailList = await this.findEmailList(dbCampaign.emailListId!)
-      if (!emailList || !emailList.klaviyoId) {
-          throw new Error(`Klaviyo List ID not found for email list ${dbCampaign.emailListId}`);
+      // Use externalId field which stores the Klaviyo List ID
+      if (!emailList || !emailList.externalId) {
+        throw new Error(`Klaviyo List ID (externalId) not found for email list ${dbCampaign.emailListId}`);
       }
       // 1. Create a campaign in Klaviyo
       const createData = {
@@ -59,7 +66,7 @@ class KlaviyoService {
           attributes: {
             name: dbCampaign.name,
             audiences: {
-              included: [emailList.klaviyoId],
+              included: [emailList.externalId], // Use externalId
             },
             send_strategy: {
               method: 'immediate',
@@ -113,7 +120,7 @@ class KlaviyoService {
   }
 
   async findEmailList(listId: string): Promise<EmailList | null> {
-      return prisma.emailList.findUnique({where: { id: listId }});
+    return prisma.emailList.findUnique({ where: { id: listId } });
   }
 }
 

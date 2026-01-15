@@ -11,6 +11,7 @@ export interface ImageGenerationParams {
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:5';
   negativePrompt?: string;
   stylePreset?: string;
+  model?: string; // Optional model override
 }
 
 // --- PROVIDERS ---
@@ -81,12 +82,12 @@ export class StabilityAIProvider implements ImageGenerationProvider {
   }
 
   private getDimension(aspectRatio: ImageGenerationParams['aspectRatio'] = '1:1', side: 'width' | 'height'): number {
-      const dimensions = {
-          '1:1': { width: 512, height: 512 },
-          '16:9': { width: 1024, height: 576 },
-          '9:16': { width: 576, height: 1024 },
-          '4:5': { width: 512, height: 640 },
-      };
-      return dimensions[aspectRatio][side];
+    const dimensions = {
+      '1:1': { width: 512, height: 512 },
+      '16:9': { width: 1024, height: 576 },
+      '9:16': { width: 576, height: 1024 },
+      '4:5': { width: 512, height: 640 },
+    };
+    return dimensions[aspectRatio][side];
   }
 }
