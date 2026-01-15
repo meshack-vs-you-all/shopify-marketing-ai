@@ -82,6 +82,49 @@ export class AuthService {
         };
     }
 
+    /**
+     * Login or Register with Google
+     */
+    async googleLogin(data: { email: string; googleId: string; firstName?: string; lastName?: string; avatar?: string }) {
+        if (!data.email) {
+            throw new AppError('Email is required', 400, 'validation_error');
+        }
+
+        let user = await prisma.user.findUnique({
+            where: { email: data.email }
+        });
+
+        if (!user) {
+            // Register new user
+            const salt = await bcrypt.genSalt(10);
+            // specific password for google users (random not meant to be used)
+            const passwordHash = await bcrypt.hash(Math.random().toString(36) + data.googleId, salt);
+
+            user = await prisma.user.create({
+                data: {
+                    email: data.email,
+                    passwordHash,
+                    firstName: data.firstName || '',
+                    lastName: data.lastName || '',
+                    role: data.email === 'meshackmogire406@gmail.com' ? 'ADMIN' : 'EDITOR' // Default role
+                }
+            });
+        }
+
+        const token = this.generateToken(user.id);
+
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role
+            },
+            token
+        };
+    }
+
     private generateToken(userId: string): string {
         return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     }

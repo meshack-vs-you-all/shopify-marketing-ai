@@ -29,4 +29,13 @@ router.get('/me', authenticate, async (req, res) => {
     res.json({ userId: (req as any).user.userId });
 });
 
+router.post('/google', async (req, res) => {
+    try {
+        const result = await authService.googleLogin(req.body);
+        res.json(result);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 export default router;
