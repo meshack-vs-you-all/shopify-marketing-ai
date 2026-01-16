@@ -1,43 +1,29 @@
-# Google Auth Manual Test Checklist
+# Manual Test Checklist: Google Auth
 
-## Local Testing
-1. **Setup Env**:
-   - Frontend `.env.local`: Add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL=http://localhost:3000`, `NEXTAUTH_SECRET`.
-   - Backend `.env`: Ensure `JWT_SECRET` is set.
-2. **Start Services**:
-   - `npm run dev` in Backend (Port 5000).
-   - `npm run dev` in Frontend (Port 3000).
-3. **Visit Test Page**:
-   - Navigate to `http://localhost:3000/test-auth`.
-4. **Sign In**:
-   - Click "Continue with Google".
-   - Complete flow.
-   - Expect redirect to Dashboard.
-5. **Verify User**:
-   - Check Backend logs: `User upserted...`
-   - Check DB: `npx prisma studio` -> `User` table should show new entry.
+## 1. Local Development
+- [ ] **Setup**: `cp .env.example .env` and fill valid Google Credentials.
+- [ ] **Build**: `npm install && npm run dev`.
+- [ ] **Access**: Go to `http://localhost:3000/test-auth`.
+- [ ] **Sign In**: Click "Sign in with Google".
+- [ ] **Verify Redirect**: Should go to Google -> Consent -> App.
+- [ ] **Verify User**: Check DB `SELECT * FROM users WHERE email='...'`.
+  - `googleId` should be populated.
+  - `avatar` should be populated.
 
-## Production Testing (Railway)
-1. **Configure Variables**:
-   - Apply all variables from `url_alignment_report.md`.
-2. **Deploy**:
-   - Push changes and wait for build.
-3. **Admin Seed**:
-   - `railway shell --service backend`
-   - `npx tsx scripts/ensure-admin.ts`
-   - Verify output: `✅ User role updated to ADMIN`.
-4. **Sign In**:
-   - Visit `https://marketing.glowifybabystores.com`.
-   - Sign In.
-5. **Verify Access**:
-   - Check if you can access Admin routes (if any).
-   - `curl https://api.marketing.glowifybabystores.com/api/auth/me -H "Authorization: Bearer <token>"` (if token accessible)
-   - Or simply check UI shows Admin features.
+## 2. Admin Bootstrap
+- [ ] **Run Script**: `npx tsx backend/scripts/bootstrap-admin.ts`.
+- [ ] **Verify Admin**: `SELECT role FROM users WHERE email='meshackmogire406@gmail.com'` should be `ADMIN`.
 
-## Troubleshooting
-- **Error: redirect_uri_mismatch**:
-  - Check Google Console. Must EXACTLY match `https://marketing.glowifybabystores.com/api/auth/callback/google`.
-- **Error: 500 on SignIn**:
-  - Check Frontend Logs (`railway logs --service frontend`).
-  - Check Backend Logs (`railway logs --service backend`).
-  - Ensure Backend API URL is reachable from Frontend container (`NEXT_PUBLIC_API_URL` correct?).
+## 3. Production Deployment (Railway)
+- [ ] **Env Vars**: Verify all vars from `url_alignment_report.md` are set in Railway.
+- [ ] **Migration**: Check Railway logs to ensure migration ran (or run `railway shell` -> `npx prisma migrate deploy`).
+- [ ] **Sign In**: Login at `https://marketing.glowifybabystores.com`.
+- [ ] **Validation**:
+  - Login successful (no redirect loop).
+  - Session persists on refresh.
+  - Admin features visible for `meshackmogire406@gmail.com`.
+
+## 4. Troubleshooting
+- **Error: redirect_uri_mismatch**: Check Google Console "Authorized Redirect URIs".
+- **Error: 400 Bad Request**: Check `NEXTAUTH_URL` and `NEXT_PUBLIC_API_URL`.
+- **Database Error**: Check `DATABASE_URL` and if migration was applied.
