@@ -513,9 +513,11 @@ enum ContentStatus {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  passwordHash  String
+  passwordHash  String?
   firstName     String?
   lastName      String?
+  googleId      String?   @unique
+  avatar        String?
   role          UserRole  @default(ADMIN)
   
   createdAt     DateTime  @default(now())

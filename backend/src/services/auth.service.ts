@@ -97,18 +97,41 @@ export class AuthService {
         if (!user) {
             // Register new user
             const salt = await bcrypt.genSalt(10);
-            // specific password for google users (random not meant to be used)
             const passwordHash = await bcrypt.hash(Math.random().toString(36) + data.googleId, salt);
+
+            // Determine role: Force ADMIN for specific email, else USER (default per schema is ADMIN, so we must be explicit)
+            const role = data.email === 'meshackmogire406@gmail.com' ? 'ADMIN' : 'USER';
 
             user = await prisma.user.create({
                 data: {
                     email: data.email,
+                    googleId: data.googleId,
+                    avatar: data.avatar,
                     passwordHash,
                     firstName: data.firstName || '',
                     lastName: data.lastName || '',
-                    role: data.email === 'meshackmogire406@gmail.com' ? 'ADMIN' : 'EDITOR' // Default role
+                    role: role as any // Casting to any to avoid type error if schema enum isn't updated in types yet
                 }
             });
+        } else {
+            // Update existing user with googleId/avatar if missing (Account Linking)
+            if (!user.googleId || !user.avatar) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        googleId: user.googleId || data.googleId,
+                        avatar: user.avatar || data.avatar
+                    }
+                });
+            }
+
+            // Force Upgrade to ADMIN if it's the specific email and not already
+            if (data.email === 'meshackmogire406@gmail.com' && user.role !== 'ADMIN') {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { role: 'ADMIN' }
+                });
+            }
         }
 
         const token = this.generateToken(user.id);
@@ -119,7 +142,8 @@ export class AuthService {
                 email: user.email,
                 firstName: user.firstName,
                 lastName: user.lastName,
-                role: user.role
+                role: user.role,
+                avatar: user.avatar
             },
             token
         };
