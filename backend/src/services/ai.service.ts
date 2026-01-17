@@ -1,3 +1,10 @@
+/**
+ * Multi-Model AI Service
+ * 
+ * Unified AI service that supports multiple providers (OpenRouter, Gemini)
+ * with task-based model routing, cost controls, and fallback chains.
+ */
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from '../utils/logger';
 import {
@@ -6,24 +13,61 @@ import {
   PlaceholderProvider,
   StabilityAIProvider,
 } from './ai/image-generation';
+import {
+  AIProvider,
+  GenerationRequest,
+  GenerationResponse,
+  TaskType,
+} from './ai';
+import {
+  OpenRouterProvider,
+  createOpenRouterProvider,
+} from './ai/openrouter.provider';
+import {
+  getTaskConfig,
+  getModelChain,
+  classifyTask,
+} from './ai/task-router.config';
+import {
+  costController,
+  UsageRecord,
+} from './ai/cost-controller';
 
 /**
  * AI Content Generation Service
+ * 
+ * Supports multi-model architecture via OpenRouter while maintaining
+ * backward compatibility with direct Gemini integration.
  */
 class AIService {
   private genAI!: GoogleGenerativeAI;
-  private model: string = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+  private legacyModel: string = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   private imageProvider!: ImageGenerationProvider;
 
+  // Multi-model providers
+  private openRouterProvider: OpenRouterProvider | null = null;
+  private useOpenRouter: boolean = false;
+
   constructor() {
-    // Initialize Text Generation (Gemini)
+    // Initialize legacy Gemini provider
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (geminiApiKey) {
       this.genAI = new GoogleGenerativeAI(geminiApiKey);
-      logger.info('Google Gemini service initialized.');
+      logger.info('Google Gemini service initialized (legacy provider).');
     } else {
-      logger.warn('GEMINI_API_KEY not found. Text generation will be disabled.');
+      logger.warn('GEMINI_API_KEY not found. Legacy Gemini provider disabled.');
     }
+
+    // Initialize OpenRouter provider
+    this.openRouterProvider = createOpenRouterProvider();
+    if (this.openRouterProvider) {
+      logger.info('OpenRouter provider initialized.');
+    }
+
+    // Determine which provider to use by default
+    const aiProvider = process.env.AI_PROVIDER || 'gemini';
+    this.useOpenRouter = aiProvider === 'openrouter' && this.openRouterProvider !== null;
+    logger.info(`Default AI provider: ${this.useOpenRouter ? 'OpenRouter' : 'Gemini'}`);
 
     // Initialize Image Generation Provider
     this.initializeImageProvider();
@@ -51,7 +95,128 @@ class AIService {
     }
   }
 
-  // ... (all text generation methods like generateAdCopy, etc. remain unchanged)
+  /**
+   * Generate content using the multi-model architecture
+   * Falls back through model chain if primary fails
+   */
+  private async generateWithFallback(params: {
+    prompt: string;
+    systemPrompt?: string;
+    taskType: TaskType;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<GenerationResponse> {
+    const config = getTaskConfig(params.taskType);
+    const modelChain = params.model ? [params.model] : getModelChain(params.taskType);
+
+    const request: GenerationRequest = {
+      prompt: params.prompt,
+      systemPrompt: params.systemPrompt,
+      model: modelChain[0],
+      temperature: params.temperature ?? config.temperature,
+      maxTokens: params.maxTokens ?? config.maxTokens,
+    };
+
+    // Check budget before proceeding
+    const budget = await costController.checkBudget();
+    if (!budget.allowed) {
+      throw new Error(`AI budget exceeded: ${budget.warning}`);
+    }
+
+    // Try each model in the chain
+    let lastError: Error | null = null;
+
+    for (const model of modelChain) {
+      try {
+        request.model = model;
+
+        if (this.useOpenRouter && this.openRouterProvider) {
+          const response = await this.openRouterProvider.generate(request);
+
+          // Record usage for cost tracking
+          if (response.cost) {
+            await costController.recordUsage({
+              model: response.model,
+              taskType: params.taskType,
+              promptTokens: response.usage.promptTokens,
+              completionTokens: response.usage.completionTokens,
+              cost: response.cost.totalCost,
+              timestamp: new Date(),
+            });
+          }
+
+          return response;
+        } else {
+          // Fall back to legacy Gemini
+          return await this.generateWithGemini(request);
+        }
+      } catch (error: any) {
+        lastError = error;
+        logger.warn(`Model ${model} failed, trying next in chain`, {
+          error: error.message,
+          taskType: params.taskType
+        });
+
+        // If this is a rate limit or temporary error, try next model
+        if (error.response?.status === 429 || error.response?.status === 503) {
+          continue;
+        }
+
+        // For other errors, still try fallback if available
+        continue;
+      }
+    }
+
+    // All models failed
+    throw lastError || new Error('All models in fallback chain failed');
+  }
+
+  /**
+   * Generate using legacy Gemini provider
+   */
+  private async generateWithGemini(request: GenerationRequest): Promise<GenerationResponse> {
+    if (!this.genAI) {
+      throw new Error('Gemini provider not configured');
+    }
+
+    const startTime = Date.now();
+    const modelName = request.model.includes('/')
+      ? request.model.split('/').pop()! // Extract model name from openrouter format
+      : request.model;
+
+    const model = this.genAI.getGenerativeModel({ model: this.legacyModel });
+
+    const fullPrompt = request.systemPrompt
+      ? `${request.systemPrompt}\n\n${request.prompt}`
+      : request.prompt;
+
+    const result = await model.generateContent(fullPrompt, {
+      generationConfig: {
+        temperature: request.temperature ?? 0.7,
+        maxOutputTokens: request.maxTokens ?? 2048,
+      }
+    } as any);
+
+    const content = result.response.text() || '';
+    const latencyMs = Date.now() - startTime;
+
+    return {
+      content,
+      model: this.legacyModel,
+      usage: {
+        promptTokens: 0, // Gemini doesn't provide token counts directly
+        completionTokens: 0,
+        totalTokens: 0,
+      },
+      finishReason: 'stop',
+      latencyMs,
+    };
+  }
+
+  /**
+   * Generate ad copy using multi-model architecture
+   */
   async generateAdCopy(params: {
     productName: string;
     productDescription: string;
@@ -59,7 +224,7 @@ class AIService {
     platform: 'meta' | 'google';
     tone?: 'professional' | 'casual' | 'luxury' | 'friendly';
     numberOfVariations?: number;
-    model?: string; // Allow override
+    model?: string;
   }): Promise<{
     headlines: string[];
     descriptions: string[];
@@ -67,22 +232,18 @@ class AIService {
   }> {
     try {
       const prompt = this.buildAdCopyPrompt(params);
+      const systemPrompt = 'You are an expert copywriter specializing in high-converting ad copy for e-commerce. Generate compelling, action-oriented ad copy that drives clicks and conversions.';
 
-      // Use requested model or default
-      const modelName = params.model || this.model;
-      const model = this.genAI.getGenerativeModel({ model: modelName });
+      const response = await this.generateWithFallback({
+        prompt,
+        systemPrompt,
+        taskType: 'marketing_copy',
+        model: params.model,
+        temperature: 0.8,
+        maxTokens: 1000,
+      });
 
-      const fullPrompt = `You are an expert copywriter specializing in high-converting ad copy for e-commerce. Generate compelling, action-oriented ad copy that drives clicks and conversions.\n\n${prompt}`;
-
-      const result = await model.generateContent(fullPrompt, {
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 1000,
-        }
-      } as any);
-
-      const content = result.response.text() || '';
-      return this.parseAdCopyResponse(content, params.numberOfVariations || 3);
+      return this.parseAdCopyResponse(response.content, params.numberOfVariations || 3);
     } catch (error: any) {
       logger.error('Error generating ad copy', { error: error.message, params });
       throw new Error(`Failed to generate ad copy: ${error.message}`);
@@ -98,6 +259,7 @@ class AIService {
     keyFeatures: string[];
     targetAudience: string;
     seoKeywords?: string[];
+    model?: string;
   }): Promise<string> {
     try {
       const prompt = `Rewrite and enhance this product description to be more compelling and SEO-optimized:
@@ -116,18 +278,18 @@ Requirements:
 - Make it scannable with short paragraphs
 - Include a clear call-to-action`;
 
-      const model = this.genAI.getGenerativeModel({ model: this.model });
+      const systemPrompt = 'You are an expert e-commerce copywriter specializing in product descriptions that convert visitors into customers.';
 
-      const fullPrompt = `You are an expert e-commerce copywriter specializing in product descriptions that convert visitors into customers.\n\n${prompt}`;
+      const response = await this.generateWithFallback({
+        prompt,
+        systemPrompt,
+        taskType: 'product_description',
+        model: params.model,
+        temperature: 0.7,
+        maxTokens: 500,
+      });
 
-      const result = await model.generateContent(fullPrompt, {
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 500,
-        }
-      } as any);
-
-      return result.response.text() || '';
+      return response.content;
     } catch (error: any) {
       logger.error('Error generating product description', { error: error.message, params });
       throw new Error(`Failed to generate product description: ${error.message}`);
@@ -143,26 +305,23 @@ Requirements:
     discount?: number;
     numberOfVariations?: number;
     model?: string;
-    customPrompt?: string; // User provided custom instruction
-    context?: string; // User provided context (e.g. "Summer Sale")
+    customPrompt?: string;
+    context?: string;
   }): Promise<string[]> {
     try {
       const prompt = this.buildEmailSubjectPrompt(params);
+      const systemPrompt = 'You are an expert email marketer. Generate compelling subject lines that maximize open rates.';
 
-      const modelName = params.model || this.model;
-      const model = this.genAI.getGenerativeModel({ model: modelName });
+      const response = await this.generateWithFallback({
+        prompt,
+        systemPrompt,
+        taskType: 'email_subject',
+        model: params.model,
+        temperature: 0.9,
+        maxTokens: 300,
+      });
 
-      const fullPrompt = `You are an expert email marketer. Generate compelling subject lines that maximize open rates.\n\n${prompt}`;
-
-      const result = await model.generateContent(fullPrompt, {
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 300,
-        }
-      } as any);
-
-      const content = result.response.text() || '';
-      return this.parseListResponse(content, params.numberOfVariations || 5);
+      return this.parseListResponse(response.content, params.numberOfVariations || 5);
     } catch (error: any) {
       console.error('CRITICAL AI ERROR:', error);
       logger.error('Error generating email subject lines', { error: error.message, params });
@@ -187,20 +346,18 @@ Requirements:
   }): Promise<string> {
     try {
       const prompt = this.buildEmailBodyPrompt(params);
+      const systemPrompt = 'You are an expert email copywriter. Write engaging, conversion-focused email content.';
 
-      const modelName = params.model || this.model;
-      const model = this.genAI.getGenerativeModel({ model: modelName });
+      const response = await this.generateWithFallback({
+        prompt,
+        systemPrompt,
+        taskType: 'email_body',
+        model: params.model,
+        temperature: 0.8,
+        maxTokens: 800,
+      });
 
-      const fullPrompt = `You are an expert email copywriter. Write engaging, conversion-focused email content.\n\n${prompt}`;
-
-      const result = await model.generateContent(fullPrompt, {
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 800,
-        }
-      } as any);
-
-      return result.response.text() || '';
+      return response.content;
     } catch (error: any) {
       console.error('CRITICAL AI ERROR (BODY):', error);
       logger.error('Error generating email body', { error: error.message, params });
@@ -217,6 +374,7 @@ Requirements:
     currentRevenue: number;
     roas: number;
     targetRoas: number;
+    model?: string;
   }): Promise<{
     analysis: string;
     recommendations: string[];
@@ -239,24 +397,24 @@ Provide:
 2. 3-5 specific recommendations
 3. Suggested actions (e.g., "increase budget by 20%", "pause underperforming ads", "test new creative")`;
 
-      const model = this.genAI.getGenerativeModel({ model: this.model });
+      const systemPrompt = 'You are a marketing analytics expert. Provide data-driven recommendations for campaign optimization.';
 
-      const fullPrompt = `You are a marketing analytics expert. Provide data-driven recommendations for campaign optimization.\n\n${prompt}`;
+      const response = await this.generateWithFallback({
+        prompt,
+        systemPrompt,
+        taskType: 'performance_analysis',
+        model: params.model,
+        temperature: 0.6,
+        maxTokens: 1000,
+      });
 
-      const result = await model.generateContent(fullPrompt, {
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 1000,
-        }
-      } as any);
-
-      const content = result.response.text() || '';
-      return this.parseAnalysisResponse(content);
+      return this.parseAnalysisResponse(response.content);
     } catch (error: any) {
       logger.error('Error analyzing performance', { error: error.message, params });
       throw new Error(`Failed to analyze performance: ${error.message}`);
     }
   }
+
   /**
    * Generate an image using the configured provider.
    */
@@ -279,7 +437,45 @@ Provide:
     }
   }
 
-  // ... (all private helper methods like buildAdCopyPrompt, etc. remain unchanged)
+  /**
+   * Get available models from OpenRouter
+   */
+  async getAvailableModels() {
+    if (this.openRouterProvider) {
+      return await this.openRouterProvider.listModels();
+    }
+    return [];
+  }
+
+  /**
+   * Check if OpenRouter is configured and healthy
+   */
+  async healthCheck(): Promise<{ openrouter: boolean; gemini: boolean }> {
+    const openrouter = this.openRouterProvider
+      ? await this.openRouterProvider.healthCheck()
+      : false;
+    const gemini = !!this.genAI;
+    return { openrouter, gemini };
+  }
+
+  /**
+   * Get current usage summary
+   */
+  async getUsageSummary() {
+    return costController.getUsageSummary();
+  }
+
+  /**
+   * Get current budget status
+   */
+  async getBudgetStatus() {
+    return costController.checkBudget();
+  }
+
+  // ============================================
+  // Private helper methods
+  // ============================================
+
   private buildAdCopyPrompt(params: any): string {
     return `Generate ${params.numberOfVariations || 3} variations of ad copy for:
 
@@ -338,7 +534,6 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
       const descriptions: string[] = [];
       const callToActions: string[] = [];
 
-      // Simple parsing logic (can be improved)
       const lines = content.split('\n').filter(line => line.trim());
       lines.forEach(line => {
         if (line.toLowerCase().includes('headline')) {
@@ -360,7 +555,6 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
       };
     } catch (error) {
       logger.error('Error parsing ad copy response', { error, content });
-      // Return default structure
       return {
         headlines: ['Check out our amazing product!'],
         descriptions: ['Discover the perfect solution for your needs.'],
