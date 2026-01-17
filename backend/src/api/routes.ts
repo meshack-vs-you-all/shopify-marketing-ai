@@ -5,6 +5,7 @@ import campaignsRoutes from './campaigns.routes';
 import approvalsRoutes from './approvals.routes';
 import emailCampaignsRoutes from './email-campaigns.routes';
 import campaignWizardRoutes from './campaigns.wizard.routes';
+import aiRoutes from './ai.routes';
 
 import authRoutes from './auth.routes';
 
@@ -20,6 +21,9 @@ router.get('/health', (_req, res) => {
 // Auth Routes (Public)
 router.use('/auth', authRoutes);
 
+// AI Routes (protected)
+router.use('/ai', authenticate, aiRoutes);
+
 // Protected Routes
 router.use('/campaigns', authenticate, campaignsRoutes);
 router.use('/email-campaigns', authenticate, emailCampaignsRoutes);
@@ -33,4 +37,5 @@ router.get('/analytics', async (req, res) => {
 });
 
 export default router;
+
 
