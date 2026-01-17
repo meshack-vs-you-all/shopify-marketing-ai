@@ -85,7 +85,7 @@ class AIService {
    * Generate content using the multi-model architecture
    * Falls back through model chain if primary fails
    */
-  private async generateWithFallback(params: {
+  async generateWithFallback(params: {
     prompt: string;
     systemPrompt?: string;
     taskType: TaskType;
