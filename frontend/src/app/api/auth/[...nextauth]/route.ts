@@ -2,7 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import axios from "axios";
 
-const BackendAPI = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const BackendAPI = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 const authOptions: NextAuthOptions = {
     providers: [
