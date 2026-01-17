@@ -10,6 +10,7 @@ import aiRoutes from './ai.routes';
 import authRoutes from './auth.routes';
 
 import settingsRoutes from './settings.routes';
+import shopifyRoutes from './shopify.routes';
 
 const router: Router = Router();
 
@@ -31,6 +32,7 @@ router.use('/email-campaigns', authenticate, emailCampaignsRoutes);
 router.use('/campaigns/wizard', authenticate, campaignWizardRoutes);
 router.use('/approvals', authenticate, approvalsRoutes);
 router.use('/settings', authenticate, settingsRoutes);
+router.use('/shopify', shopifyRoutes);
 
 // Analytics endpoint (placeholder)
 router.get('/analytics', async (req, res) => {
