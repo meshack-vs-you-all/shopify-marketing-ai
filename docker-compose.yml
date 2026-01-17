@@ -92,6 +92,7 @@ services:
       - /app/.next
     environment:
       - NODE_ENV=development
+      - INTERNAL_API_URL=http://backend:5000
     env_file:
       - path: ./frontend/.env.local
         required: false
