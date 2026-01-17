@@ -30,6 +30,10 @@ credentials*.csv
 # Zone identifiers (Windows metadata)
 *:Zone.Identifier
 
+# Credential files that should never be committed
+Client*.txt
+*secrets*.txt
+
 # ============================================
 # Dependencies
 # ============================================

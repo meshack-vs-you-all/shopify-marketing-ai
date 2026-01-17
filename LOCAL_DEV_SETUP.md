@@ -14,7 +14,7 @@ To test the new features on your local machine, follows these steps:
    GOOGLE_CLIENT_ID=<your-google-client-id>
    GOOGLE_CLIENT_SECRET=<your-google-client-secret>
    NEXTAUTH_URL=http://localhost:3000
-   NEXTAUTH_SECRET=local-dev-secret
+   NEXTAUTH_SECRET=<generate-a-secret>
    NEXT_PUBLIC_API_URL=http://localhost:5000
    ```
 2. **Backend**: Open `.env` (root) and ensure:
