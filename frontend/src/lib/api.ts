@@ -118,6 +118,42 @@ export const api = {
   // Settings
   getIntegrationStatus: () => apiClient.get('/api/settings/integrations'),
   getSystemStatus: () => apiClient.get('/api/settings/system'),
+
+  // AI - Models & Discovery
+  getAIModels: () => apiClient.get('/api/ai/models'),
+  getAIModelRecommendations: (taskType: string, budget?: number) =>
+    apiClient.get(`/api/ai/models/recommended/${taskType}`, { params: { budget } }),
+
+  // AI - Settings
+  getAISettings: () => apiClient.get('/api/ai/settings'),
+  updateAISettings: (data: {
+    defaultModel?: string;
+    defaultTemperature?: number;
+    defaultMaxTokens?: number;
+    dailyBudgetLimit?: number;
+    monthlyBudgetLimit?: number;
+    perRequestLimit?: number;
+    taskOverrides?: Record<string, any>;
+    enabledModels?: string[];
+    enableFallbacks?: boolean;
+    enableCostTracking?: boolean;
+  }) => apiClient.put('/api/ai/settings', data),
+
+  // AI - Usage & Budget
+  getAIUsage: () => apiClient.get('/api/ai/usage'),
+
+  // AI - Generation (new unified endpoint)
+  generateContent: (data: {
+    taskType: string;
+    prompt: string;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    [key: string]: any;
+  }) => apiClient.post('/api/ai/generate', data),
+
+  // AI - Health
+  getAIHealth: () => apiClient.get('/api/ai/health'),
 };
 
 export default apiClient;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { api } from '@/lib/api';
@@ -13,30 +13,50 @@ import {
     TagIcon,
     EnvelopeIcon,
     ClipboardDocumentCheckIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    CurrencyDollarIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
-const MODELS = [
-    { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite (Stable)', type: 'text' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Standard)', type: 'text' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Fast/Limits)', type: 'text' },
-    { id: 'imagen-3.0', name: 'Imagen 3.0 (High Quality)', type: 'image' }
+// Fallback models if OpenRouter unavailable
+const FALLBACK_MODELS = [
+    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', type: 'text', provider: 'anthropic' },
+    { id: 'openai/gpt-4.1', name: 'GPT-4.1', type: 'text', provider: 'openai' },
+    { id: 'openai/gpt-4.1-mini', name: 'GPT-4.1 Mini', type: 'text', provider: 'openai' },
+    { id: 'google/gemini-2.0-flash', name: 'Gemini 2.0 Flash', type: 'text', provider: 'google' },
+    { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', type: 'text', provider: 'meta' },
+];
+
+const IMAGE_MODELS = [
+    { id: 'imagen-3.0', name: 'Imagen 3.0 (High Quality)', type: 'image', provider: 'google' }
 ];
 
 const TONES = ['Professional', 'Casual', 'Friendly', 'Urgent', 'Luxury', 'Witty'];
 
 type TabMode = 'email' | 'ad' | 'product' | 'image';
 
+interface GenerationMeta {
+    model: string;
+    fallbackUsed: boolean;
+    latencyMs: number;
+    estimatedCost?: number;
+}
+
 export default function AIStudioPage() {
     const [activeTab, setActiveTab] = useState<TabMode>('email');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<any>(null); // Can be string or object
+    const [result, setResult] = useState<any>(null);
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+    const [generationMeta, setGenerationMeta] = useState<GenerationMeta | null>(null);
+
+    // Dynamic models from OpenRouter
+    const [availableModels, setAvailableModels] = useState<any[]>(FALLBACK_MODELS);
+    const [modelsLoading, setModelsLoading] = useState(true);
 
     // Consolidated Form State
     const [formData, setFormData] = useState({
         // Common
-        model: 'gemini-flash-lite-latest',
+        model: 'anthropic/claude-3.5-sonnet',
         tone: 'Friendly',
 
         // Email
@@ -45,7 +65,7 @@ export default function AIStudioPage() {
         customPrompt: '',
 
         // Ad Copy
-        platform: 'meta', // meta, google
+        platform: 'meta',
         productName: '',
         productDescription: '',
         targetAudience: '',
@@ -58,6 +78,29 @@ export default function AIStudioPage() {
         prompt: '',
         aspectRatio: '1:1'
     });
+
+    // Load models from OpenRouter on mount
+    useEffect(() => {
+        loadModels();
+    }, []);
+
+    const loadModels = async () => {
+        setModelsLoading(true);
+        try {
+            const response = await api.getAIModels();
+            if (response.data.models?.length > 0) {
+                // Filter to text models only and limit count
+                const textModels = response.data.models
+                    .filter((m: any) => m.capabilities?.includes('text') || !m.capabilities)
+                    .slice(0, 20);
+                setAvailableModels(textModels);
+            }
+        } catch (err) {
+            console.warn('Failed to load OpenRouter models, using fallbacks');
+        } finally {
+            setModelsLoading(false);
+        }
+    };
 
     const handleGenerate = async () => {
         setLoading(true);
@@ -218,7 +261,7 @@ export default function AIStudioPage() {
                                                 value={formData.model}
                                                 onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                                             >
-                                                {MODELS.filter(m => activeTab === 'image' ? (m.type === 'image' || m.id === 'imagen-3.0') : m.type === 'text').map(m => (
+                                                {(activeTab === 'image' ? IMAGE_MODELS : availableModels).map((m: { id: string; name: string }) => (
                                                     <option key={m.id} value={m.id}>{m.name}</option>
                                                 ))}
                                             </select>
