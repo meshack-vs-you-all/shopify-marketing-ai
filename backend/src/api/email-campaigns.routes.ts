@@ -1,10 +1,25 @@
 import { Router } from 'express';
 import { emailCampaignService } from '../services/email-campaign.service';
 import { aiService } from '../services/ai.service';
-import { shopifyService } from '../services/shopify.service';
+// Shopify service is loaded dynamically to avoid tsx ESM crash when credentials are missing
 import { logger } from '../utils/logger';
 import { authenticate } from '../middleware/auth';
 import multer from 'multer';
+
+// Lazy-loaded shopify service
+let shopifyServiceInstance: any = null;
+async function getShopifyService() {
+  if (!shopifyServiceInstance) {
+    try {
+      const { shopifyService } = await import('../services/shopify.service');
+      shopifyServiceInstance = shopifyService;
+    } catch (e: any) {
+      logger.warn('Shopify service not available: ' + e.message);
+      return null;
+    }
+  }
+  return shopifyServiceInstance;
+}
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -152,7 +167,10 @@ router.post('/generate', async (req, res) => {
     let productDetails: any = {};
     if (productId) {
       try {
-        productDetails = await shopifyService.getProduct(productId);
+        const shopifyService = await getShopifyService();
+        if (shopifyService) {
+          productDetails = await shopifyService.getProduct(productId);
+        }
       } catch (err) {
         logger.warn(`Could not fetch product ${productId}`, err);
       }
@@ -229,6 +247,10 @@ router.post('/generate-image', async (req, res) => {
 
 router.get('/shopify/products', async (req, res) => {
   try {
+    const shopifyService = await getShopifyService();
+    if (!shopifyService) {
+      return res.status(503).json({ error: 'Shopify not configured' });
+    }
     const products = await shopifyService.getProducts();
     res.json(products);
   } catch (error: any) {
@@ -238,6 +260,10 @@ router.get('/shopify/products', async (req, res) => {
 
 router.get('/shopify/collections', async (req, res) => {
   try {
+    const shopifyService = await getShopifyService();
+    if (!shopifyService) {
+      return res.status(503).json({ error: 'Shopify not configured' });
+    }
     const collections = await shopifyService.getCollections();
     res.json(collections);
   } catch (error: any) {

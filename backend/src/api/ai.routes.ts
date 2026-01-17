@@ -10,6 +10,8 @@ import { aiService } from '../services/ai.service';
 import { costController } from '../services/ai/cost-controller';
 import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
+import { ModelRegistry } from '../services/ai/model-registry';
+import { createOpenRouterProvider } from '../services/ai/openrouter.provider';
 
 const router = Router();
 
@@ -73,10 +75,6 @@ router.get('/models/recommended/:taskType', async (req: Request, res: Response) 
         const { taskType } = req.params;
         const budget = parseFloat(req.query.budget as string) || undefined;
 
-        // Import model registry dynamically to avoid circular deps
-        const { ModelRegistry } = await import('../services/ai/model-registry');
-        const { createOpenRouterProvider } = await import('../services/ai/openrouter.provider');
-
         const provider = createOpenRouterProvider();
         if (!provider) {
             return res.status(503).json({ error: 'OpenRouter not configured' });
@@ -117,9 +115,9 @@ router.get('/settings', async (req: Request, res: Response) => {
                 defaultModel: 'anthropic/claude-3.5-sonnet',
                 defaultTemperature: 0.7,
                 defaultMaxTokens: 2048,
-                dailyBudgetLimit: new (require('decimal.js'))(50),
-                monthlyBudgetLimit: new (require('decimal.js'))(500),
-                perRequestLimit: new (require('decimal.js'))(1),
+                dailyBudgetLimit: 50,
+                monthlyBudgetLimit: 500,
+                perRequestLimit: 1,
                 taskOverrides: {},
                 enabledModels: [],
                 enableFallbacks: true,
@@ -351,7 +349,7 @@ router.get('/health', async (req: Request, res: Response) => {
         const health = await aiService.healthCheck();
 
         res.json({
-            status: health.openrouter || health.gemini ? 'ok' : 'degraded',
+            status: health.openrouter ? 'ok' : 'degraded',
             providers: health,
             timestamp: new Date().toISOString(),
         });

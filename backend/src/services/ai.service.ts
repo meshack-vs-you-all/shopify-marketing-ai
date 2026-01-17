@@ -1,11 +1,10 @@
 /**
  * Multi-Model AI Service
  * 
- * Unified AI service that supports multiple providers (OpenRouter, Gemini)
+ * Unified AI service that supports OpenRouter as the sole AI provider
  * with task-based model routing, cost controls, and fallback chains.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from '../utils/logger';
 import {
   ImageGenerationProvider,
@@ -18,7 +17,7 @@ import {
   GenerationRequest,
   GenerationResponse,
   TaskType,
-} from './ai';
+} from './ai/ai-provider.interface';
 import {
   OpenRouterProvider,
   createOpenRouterProvider,
@@ -40,34 +39,21 @@ import {
  * backward compatibility with direct Gemini integration.
  */
 class AIService {
-  private genAI!: GoogleGenerativeAI;
-  private legacyModel: string = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
   private imageProvider!: ImageGenerationProvider;
 
-  // Multi-model providers
+  // Multi-model provider
   private openRouterProvider: OpenRouterProvider | null = null;
-  private useOpenRouter: boolean = false;
 
   constructor() {
-    // Initialize legacy Gemini provider
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (geminiApiKey) {
-      this.genAI = new GoogleGenerativeAI(geminiApiKey);
-      logger.info('Google Gemini service initialized (legacy provider).');
-    } else {
-      logger.warn('GEMINI_API_KEY not found. Legacy Gemini provider disabled.');
-    }
-
     // Initialize OpenRouter provider
     this.openRouterProvider = createOpenRouterProvider();
     if (this.openRouterProvider) {
       logger.info('OpenRouter provider initialized.');
+    } else {
+      logger.error('OpenRouter provider failed to initialize.');
     }
 
-    // Determine which provider to use by default
-    const aiProvider = process.env.AI_PROVIDER || 'gemini';
-    this.useOpenRouter = aiProvider === 'openrouter' && this.openRouterProvider !== null;
-    logger.info(`Default AI provider: ${this.useOpenRouter ? 'OpenRouter' : 'Gemini'}`);
+    logger.info('Default AI provider: OpenRouter');
 
     // Initialize Image Generation Provider
     this.initializeImageProvider();
@@ -124,6 +110,10 @@ class AIService {
       throw new Error(`AI budget exceeded: ${budget.warning}`);
     }
 
+    if (!this.openRouterProvider) {
+      throw new Error('OpenRouter provider is not initialized');
+    }
+
     // Try each model in the chain
     let lastError: Error | null = null;
 
@@ -131,26 +121,22 @@ class AIService {
       try {
         request.model = model;
 
-        if (this.useOpenRouter && this.openRouterProvider) {
-          const response = await this.openRouterProvider.generate(request);
+        const response = await this.openRouterProvider.generate(request);
 
-          // Record usage for cost tracking
-          if (response.cost) {
-            await costController.recordUsage({
-              model: response.model,
-              taskType: params.taskType,
-              promptTokens: response.usage.promptTokens,
-              completionTokens: response.usage.completionTokens,
-              cost: response.cost.totalCost,
-              timestamp: new Date(),
-            });
-          }
-
-          return response;
-        } else {
-          // Fall back to legacy Gemini
-          return await this.generateWithGemini(request);
+        // Record usage for cost tracking
+        if (response.cost) {
+          await costController.recordUsage({
+            model: response.model,
+            taskType: params.taskType,
+            promptTokens: response.usage.promptTokens,
+            completionTokens: response.usage.completionTokens,
+            cost: response.cost.totalCost,
+            timestamp: new Date(),
+          });
         }
+
+        return response;
+
       } catch (error: any) {
         lastError = error;
         logger.warn(`Model ${model} failed, trying next in chain`, {
@@ -170,48 +156,6 @@ class AIService {
 
     // All models failed
     throw lastError || new Error('All models in fallback chain failed');
-  }
-
-  /**
-   * Generate using legacy Gemini provider
-   */
-  private async generateWithGemini(request: GenerationRequest): Promise<GenerationResponse> {
-    if (!this.genAI) {
-      throw new Error('Gemini provider not configured');
-    }
-
-    const startTime = Date.now();
-    const modelName = request.model.includes('/')
-      ? request.model.split('/').pop()! // Extract model name from openrouter format
-      : request.model;
-
-    const model = this.genAI.getGenerativeModel({ model: this.legacyModel });
-
-    const fullPrompt = request.systemPrompt
-      ? `${request.systemPrompt}\n\n${request.prompt}`
-      : request.prompt;
-
-    const result = await model.generateContent(fullPrompt, {
-      generationConfig: {
-        temperature: request.temperature ?? 0.7,
-        maxOutputTokens: request.maxTokens ?? 2048,
-      }
-    } as any);
-
-    const content = result.response.text() || '';
-    const latencyMs = Date.now() - startTime;
-
-    return {
-      content,
-      model: this.legacyModel,
-      usage: {
-        promptTokens: 0, // Gemini doesn't provide token counts directly
-        completionTokens: 0,
-        totalTokens: 0,
-      },
-      finishReason: 'stop',
-      latencyMs,
-    };
   }
 
   /**
@@ -450,12 +394,11 @@ Provide:
   /**
    * Check if OpenRouter is configured and healthy
    */
-  async healthCheck(): Promise<{ openrouter: boolean; gemini: boolean }> {
+  async healthCheck(): Promise<{ openrouter: boolean }> {
     const openrouter = this.openRouterProvider
       ? await this.openRouterProvider.healthCheck()
       : false;
-    const gemini = !!this.genAI;
-    return { openrouter, gemini };
+    return { openrouter };
   }
 
   /**
@@ -611,6 +554,7 @@ Format as JSON with arrays: {headlines: [], descriptions: [], callToActions: []}
     };
   }
 }
+
 
 export const aiService = new AIService();
 export default aiService;

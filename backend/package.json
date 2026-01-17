@@ -4,7 +4,8 @@
   "description": "Backend API for Shopify Marketing Automation AI",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsc && node dist/backend/src/index.js",
+    "dev:watch": "tsc -w & nodemon dist/backend/src/index.js",
     "build": "tsc",
     "start": "node dist/backend/src/index.js",
     "test": "jest",

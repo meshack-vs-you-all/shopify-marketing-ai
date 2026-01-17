@@ -213,7 +213,7 @@ export default function AIStudioPage() {
                             <SparklesIcon className="w-6 h-6 text-indigo-500 animate-pulse" />
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Generate email copy, ad variations, and product descriptions powered by Gemini 1.5.
+                            Generate email copy, ad variations, and product descriptions powered by OpenRouter AI.
                         </p>
                     </div>
                 </div>

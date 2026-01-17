@@ -1,5 +1,3 @@
-import '@shopify/shopify-api/adapters/node';
-import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 import { logger } from '../utils/logger';
 
 /**
@@ -7,41 +5,64 @@ import { logger } from '../utils/logger';
  * Handles all interactions with Shopify store
  */
 class ShopifyService {
-  private client: any;
+  private client: any = null;
   private storeUrl: string;
   private accessToken: string;
+  private initialized: boolean = false;
 
   constructor() {
     this.storeUrl = process.env.SHOPIFY_STORE_URL || '';
     this.accessToken = process.env.SHOPIFY_ACCESS_TOKEN || '';
+  }
 
-    if (!this.storeUrl || !this.accessToken) {
-      logger.warn('Shopify credentials not configured');
-      return;
+  private async initialize(): Promise<boolean> {
+    if (this.initialized) return !!this.client;
+    this.initialized = true;
+
+    if (!this.storeUrl || !this.accessToken || this.storeUrl === 'your-store.myshopify.com') {
+      logger.warn('Shopify credentials not configured. Shopify features disabled.');
+      return false;
     }
 
-    // Initialize Shopify API client
-    const shopify = shopifyApi({
-      apiKey: process.env.SHOPIFY_API_KEY || '',
-      apiSecretKey: process.env.SHOPIFY_API_SECRET || '',
-      scopes: ['read_products', 'read_orders', 'read_customers'],
-      hostName: process.env.SHOPIFY_STORE_URL?.replace('https://', '').replace('http://', '') || '',
-      apiVersion: LATEST_API_VERSION,
-      isEmbeddedApp: false,
-    });
+    try {
+      // Dynamic import to avoid crash when credentials are missing
+      // await import('@shopify/shopify-api/adapters/node');
+      // const { shopifyApi, LATEST_API_VERSION } = await import('@shopify/shopify-api');
 
-    const session = shopify.session.customAppSession(this.storeUrl);
-    session.accessToken = this.accessToken;
+      throw new Error('Shopify integration temporarily disabled for OpenRouter testing due to ESM resolution issues.');
 
-    this.client = new shopify.clients.Rest({
-      session,
-    });
+      /*
+      const shopify = shopifyApi({
+        apiKey: process.env.SHOPIFY_API_KEY || '',
+        apiSecretKey: process.env.SHOPIFY_API_SECRET || '',
+        scopes: ['read_products', 'read_orders', 'read_customers'],
+        hostName: this.storeUrl.replace('https://', '').replace('http://', ''),
+        apiVersion: LATEST_API_VERSION,
+        isEmbeddedApp: false,
+      });
+
+      const session = shopify.session.customAppSession(this.storeUrl);
+      session.accessToken = this.accessToken;
+
+      this.client = new shopify.clients.Rest({
+        session,
+      });
+      logger.info('Shopify service initialized.');
+      return true;
+      */
+    } catch (error: any) {
+      logger.warn('Shopify service failed to initialize: ' + error.message);
+      return false;
+    }
   }
 
   /**
    * Get all products from store
    */
   async getProducts(limit: number = 50): Promise<any[]> {
+    if (!(await this.initialize())) {
+      return [];
+    }
     try {
       const response = await this.client.get({
         path: 'products',

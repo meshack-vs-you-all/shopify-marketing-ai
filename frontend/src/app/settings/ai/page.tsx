@@ -69,7 +69,7 @@ export default function AiSettingsPage() {
     const [settings, setSettings] = useState<AISettings | null>(null);
     const [models, setModels] = useState<Model[]>([]);
     const [usage, setUsage] = useState<UsageData | null>(null);
-    const [health, setHealth] = useState<{ openrouter: boolean; gemini: boolean } | null>(null);
+    const [health, setHealth] = useState<{ openrouter: boolean } | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -151,10 +151,6 @@ export default function AiSettingsPage() {
                                 <span className={`flex items-center gap-1 ${health.openrouter ? 'text-green-600' : 'text-gray-400'}`}>
                                     {health.openrouter ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
                                     OpenRouter
-                                </span>
-                                <span className={`flex items-center gap-1 ${health.gemini ? 'text-green-600' : 'text-gray-400'}`}>
-                                    {health.gemini ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
-                                    Gemini
                                 </span>
                             </div>
                         )}
