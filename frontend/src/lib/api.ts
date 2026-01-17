@@ -154,6 +154,26 @@ export const api = {
 
   // AI - Health
   getAIHealth: () => apiClient.get('/api/ai/health'),
+
+  // AI - Newsletter Generation (single-action complete newsletter)
+  generateNewsletter: (data: {
+    campaignType: 'newsletter' | 'promotion' | 'product_launch' | 'seasonal';
+    campaignName?: string;
+    productIds?: string[];
+    products?: Array<{ id: string; title: string; description: string; price: string; imageUrl?: string }>;
+    tone?: 'professional' | 'casual' | 'friendly' | 'urgent' | 'luxury';
+    seoOptimized?: boolean;
+    includeHeroImage?: boolean;
+    customInstructions?: string;
+    model?: string;
+  }) => apiClient.post('/api/ai/generate/newsletter', data),
+
+  // Shopify - Products & Collections
+  getShopifyProducts: (limit?: number) => apiClient.get('/api/shopify/products', { params: { limit } }),
+  getShopifyProduct: (id: string) => apiClient.get(`/api/shopify/products/${id}`),
+  getShopifyCollections: () => apiClient.get('/api/shopify/collections'),
+  getShopifyAnalytics: () => apiClient.get('/api/shopify/analytics'),
+  getShopifyStatus: () => apiClient.get('/api/shopify/status'),
 };
 
 export default apiClient;

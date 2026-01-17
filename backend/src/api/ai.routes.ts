@@ -12,6 +12,7 @@ import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
 import { ModelRegistry } from '../services/ai/model-registry';
 import { createOpenRouterProvider } from '../services/ai/openrouter.provider';
+import { newsletterGeneratorService } from '../services/newsletter-generator.service';
 
 const router = Router();
 
@@ -336,6 +337,77 @@ router.post('/generate', async (req: Request, res: Response) => {
     } catch (error: any) {
         const latencyMs = Date.now() - startTime;
         logger.error('Generation failed', { error: error.message, latencyMs });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/ai/generate/newsletter
+ * Generate a complete newsletter with all components in one action
+ * Integrates Shopify products and SEO optimization
+ */
+router.post('/generate/newsletter', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+
+    try {
+        const {
+            campaignType,
+            campaignName,
+            productIds,
+            products,
+            tone,
+            seoOptimized,
+            includeHeroImage,
+            customInstructions,
+            model,
+        } = req.body;
+
+        if (!campaignType) {
+            return res.status(400).json({ error: 'campaignType is required' });
+        }
+
+        // Check budget before proceeding
+        const budget = await costController.checkBudget();
+        if (!budget.allowed) {
+            verboseLog('Newsletter generation blocked - budget exceeded', budget);
+            return res.status(402).json({
+                error: 'AI budget exceeded',
+                budget,
+            });
+        }
+
+        verboseLog('Newsletter generation starting', { campaignType, productIds, tone });
+
+        const newsletter = await newsletterGeneratorService.generateNewsletter({
+            campaignType,
+            campaignName,
+            productIds,
+            products,
+            tone,
+            seoOptimized,
+            includeHeroImage,
+            customInstructions,
+            model,
+        });
+
+        const latencyMs = Date.now() - startTime;
+
+        verboseLog('Newsletter generation complete', {
+            campaignType,
+            latencyMs,
+            productsUsed: newsletter.generationMeta.productsUsed,
+        });
+
+        res.json({
+            newsletter,
+            meta: {
+                latencyMs,
+                ...newsletter.generationMeta,
+            },
+        });
+    } catch (error: any) {
+        const latencyMs = Date.now() - startTime;
+        logger.error('Newsletter generation failed', { error: error.message, latencyMs });
         res.status(500).json({ error: error.message });
     }
 });

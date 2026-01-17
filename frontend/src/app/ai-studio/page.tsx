@@ -16,6 +16,9 @@ import {
     ArrowPathIcon,
     CurrencyDollarIcon,
     ExclamationTriangleIcon,
+    CheckCircleIcon,
+    ShoppingBagIcon,
+    RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 
 // Fallback models if OpenRouter unavailable
@@ -27,69 +30,86 @@ const FALLBACK_MODELS = [
     { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', type: 'text', provider: 'meta' },
 ];
 
-const IMAGE_MODELS = [
-    { id: 'imagen-3.0', name: 'Imagen 3.0 (High Quality)', type: 'image', provider: 'google' }
+const CAMPAIGN_TYPES = [
+    { id: 'newsletter', name: 'Weekly Newsletter', icon: EnvelopeIcon, description: 'Regular updates with featured products' },
+    { id: 'promotion', name: 'Flash Sale', icon: CurrencyDollarIcon, description: 'Limited-time promotional offer' },
+    { id: 'product_launch', name: 'Product Launch', icon: RocketLaunchIcon, description: 'New product announcement' },
+    { id: 'seasonal', name: 'Seasonal Campaign', icon: SparklesIcon, description: 'Holiday or seasonal promotion' },
 ];
 
-const TONES = ['Professional', 'Casual', 'Friendly', 'Urgent', 'Luxury', 'Witty'];
+const TONES = ['Professional', 'Casual', 'Friendly', 'Urgent', 'Luxury'];
 
-type TabMode = 'email' | 'ad' | 'product' | 'image';
+interface ShopifyProduct {
+    id: string;
+    title: string;
+    description: string;
+    handle: string;
+    vendor: string;
+    product_type: string;
+    tags: string[];
+    variants: Array<{ price: string; compare_at_price?: string }>;
+    images: Array<{ src: string }>;
+}
 
-interface GenerationMeta {
-    model: string;
-    fallbackUsed: boolean;
-    latencyMs: number;
-    estimatedCost?: number;
+interface NewsletterResult {
+    subject: string;
+    preheader: string;
+    htmlBody: string;
+    textBody: string;
+    ctaText: string;
+    heroImagePrompt?: string;
+    seoMeta?: { title: string; description: string; keywords: string[] };
+    generationMeta: { model: string; productsUsed: number; timestamp: string };
 }
 
 export default function AIStudioPage() {
-    const [activeTab, setActiveTab] = useState<TabMode>('email');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
-    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-    const [generationMeta, setGenerationMeta] = useState<GenerationMeta | null>(null);
+    const [productsLoading, setProductsLoading] = useState(true);
+    const [shopifyProducts, setShopifyProducts] = useState<ShopifyProduct[]>([]);
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+    const [newsletter, setNewsletter] = useState<NewsletterResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [usingMockData, setUsingMockData] = useState(false);
 
     // Dynamic models from OpenRouter
     const [availableModels, setAvailableModels] = useState<any[]>(FALLBACK_MODELS);
     const [modelsLoading, setModelsLoading] = useState(true);
 
-    // Consolidated Form State
+    // Form State
     const [formData, setFormData] = useState({
-        // Common
+        campaignType: 'newsletter' as 'newsletter' | 'promotion' | 'product_launch' | 'seasonal',
         model: 'anthropic/claude-3.5-sonnet',
         tone: 'Friendly',
-
-        // Email
-        emailType: 'newsletter',
-        context: '',
-        customPrompt: '',
-
-        // Ad Copy
-        platform: 'meta',
-        productName: '',
-        productDescription: '',
-        targetAudience: '',
-
-        // Product
-        keyFeatures: '',
-        seoKeywords: '',
-
-        // Image
-        prompt: '',
-        aspectRatio: '1:1'
+        seoOptimized: true,
+        includeHeroImage: true,
+        customInstructions: '',
     });
 
-    // Load models from OpenRouter on mount
+    // Load products and models on mount
     useEffect(() => {
+        loadProducts();
         loadModels();
     }, []);
+
+    const loadProducts = async () => {
+        setProductsLoading(true);
+        try {
+            const response = await api.getShopifyProducts(20);
+            setShopifyProducts(response.data.products || []);
+            setUsingMockData(response.data.useMockData || false);
+        } catch (err) {
+            console.warn('Failed to load Shopify products');
+            setShopifyProducts([]);
+        } finally {
+            setProductsLoading(false);
+        }
+    };
 
     const loadModels = async () => {
         setModelsLoading(true);
         try {
             const response = await api.getAIModels();
             if (response.data.models?.length > 0) {
-                // Filter to text models only and limit count
                 const textModels = response.data.models
                     .filter((m: any) => m.capabilities?.includes('text') || !m.capabilities)
                     .slice(0, 20);
@@ -102,103 +122,54 @@ export default function AIStudioPage() {
         }
     };
 
-    const handleGenerate = async () => {
+    const toggleProductSelection = (productId: string) => {
+        setSelectedProducts(prev =>
+            prev.includes(productId)
+                ? prev.filter(id => id !== productId)
+                : [...prev, productId]
+        );
+    };
+
+    const handleGenerateNewsletter = async () => {
         setLoading(true);
-        setResult(null);
-        setGeneratedImage(null);
+        setError(null);
+        setNewsletter(null);
 
         try {
-            let response;
-            if (activeTab === 'email') {
-                response = await api.generateEmailContent({
-                    type: formData.emailType === 'subject' ? 'subject' : 'body',
-                    campaignType: formData.emailType === 'subject' ? undefined : formData.emailType,
-                    context: formData.context,
-                    customPrompt: formData.customPrompt,
-                    tone: formData.tone.toLowerCase(),
-                    model: formData.model
-                });
-                const resData = response.data;
-                setResult(Array.isArray(resData.result) ? resData.result.join('\n') : resData.result);
+            // Build products array from selected IDs
+            const products = selectedProducts.map(id => {
+                const product = shopifyProducts.find(p => p.id === id);
+                if (!product) return null;
+                return {
+                    id: product.id,
+                    title: product.title,
+                    description: product.description || '',
+                    price: product.variants?.[0]?.price || '0',
+                    compareAtPrice: product.variants?.[0]?.compare_at_price,
+                    imageUrl: product.images?.[0]?.src,
+                };
+            }).filter(Boolean);
 
-            } else if (activeTab === 'ad') {
-                response = await api.generateAdCopy({
-                    productName: formData.productName,
-                    productDescription: formData.productDescription,
-                    targetAudience: formData.targetAudience,
-                    platform: formData.platform,
-                    tone: formData.tone.toLowerCase(),
-                    model: formData.model
-                });
-                setResult(response.data); // Validates Ad Copy specific structure
+            const response = await api.generateNewsletter({
+                campaignType: formData.campaignType,
+                products: products as any,
+                tone: formData.tone.toLowerCase() as any,
+                seoOptimized: formData.seoOptimized,
+                includeHeroImage: formData.includeHeroImage,
+                customInstructions: formData.customInstructions || undefined,
+                model: formData.model,
+            });
 
-            } else if (activeTab === 'product') {
-                response = await api.generateProductDescription({
-                    productName: formData.productName,
-                    currentDescription: formData.productDescription,
-                    keyFeatures: formData.keyFeatures.split(',').map(s => s.trim()).filter(Boolean),
-                    targetAudience: formData.targetAudience,
-                    seoKeywords: formData.seoKeywords.split(',').map(s => s.trim()).filter(Boolean),
-                    model: formData.model
-                });
-                setResult(response.data.result);
-
-            } else if (activeTab === 'image') {
-                response = await api.generateImage({
-                    prompt: formData.prompt,
-                    aspectRatio: formData.aspectRatio,
-                    model: formData.model === 'imagen-3.0' ? undefined : formData.model
-                });
-                setGeneratedImage(response.data.imageUrl);
-            }
-        } catch (error: any) {
-            console.error('Generation failed:', error);
-            setResult(`Error: ${error.response?.data?.error || error.message}`);
+            setNewsletter(response.data.newsletter);
+        } catch (err: any) {
+            console.error('Newsletter generation failed:', err);
+            setError(err.response?.data?.error || err.message || 'Generation failed');
         } finally {
             setLoading(false);
         }
     };
 
-    const renderTextResult = () => {
-        if (!result) return null;
-
-        if (typeof result === 'string') {
-            return (
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 min-h-[200px] whitespace-pre-wrap font-sans text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {result}
-                </div>
-            );
-        }
-
-        // Handle Ad Copy JSON structure
-        if (result.headlines) {
-            return (
-                <div className="space-y-6">
-                    <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Headlines</h4>
-                        <div className="space-y-2">
-                            {result.headlines.map((h: string, i: number) => (
-                                <div key={i} className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 text-sm">
-                                    {h}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Descriptions</h4>
-                        <div className="space-y-2">
-                            {result.descriptions.map((d: string, i: number) => (
-                                <div key={i} className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 text-sm">
-                                    {d}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-        return <pre>{JSON.stringify(result, null, 2)}</pre>;
-    };
+    const selectedCampaignType = CAMPAIGN_TYPES.find(t => t.id === formData.campaignType);
 
     return (
         <ProtectedRoute>
@@ -208,325 +179,270 @@ export default function AIStudioPage() {
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                                AI Content Studio
+                                AI Campaign Studio
                             </span>
                             <SparklesIcon className="w-6 h-6 text-indigo-500 animate-pulse" />
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Generate email copy, ad variations, and product descriptions powered by OpenRouter AI.
+                            Generate complete, send-ready marketing campaigns in one click.
                         </p>
                     </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="border-b border-gray-200 dark:border-gray-700">
-                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                        {[
-                            { id: 'email', name: 'Email Marketing', icon: EnvelopeIcon },
-                            { id: 'ad', name: 'Ad Copy', icon: MegaphoneIcon },
-                            { id: 'product', name: 'Product Descriptions', icon: TagIcon },
-                            { id: 'image', name: 'Visuals', icon: PhotoIcon },
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => { setActiveTab(tab.id as TabMode); setResult(null); setGeneratedImage(null); }}
-                                className={`
-                                flex items-center whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                                ${activeTab === tab.id
-                                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}
-                            `}
-                            >
-                                <tab.icon className={`mr-2 h-5 w-5 ${activeTab === tab.id ? 'text-indigo-500' : 'text-gray-400'}`} />
-                                {tab.name}
-                            </button>
-                        ))}
-                    </nav>
+                    {usingMockData && (
+                        <div className="flex items-center gap-2 text-amber-600 text-sm">
+                            <ExclamationTriangleIcon className="w-4 h-4" />
+                            <span>Using demo products (Shopify not connected)</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Configuration Panel */}
+                    {/* Left Column: Configuration */}
                     <div className="lg:col-span-1 space-y-6">
+                        {/* Campaign Type Selection */}
                         <Card className="bg-white/50 backdrop-blur-sm border-indigo-50 ring-1 ring-indigo-100 dark:bg-gray-800/50 dark:border-gray-700 dark:ring-0">
-                            <div className="space-y-6">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Campaign Type</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                {CAMPAIGN_TYPES.map(type => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => setFormData({ ...formData, campaignType: type.id as any })}
+                                        className={`p-3 rounded-lg border text-left transition-all ${formData.campaignType === type.id
+                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-indigo-200 dark:ring-indigo-500/30'
+                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <type.icon className={`w-5 h-5 mb-1 ${formData.campaignType === type.id ? 'text-indigo-600' : 'text-gray-400'}`} />
+                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{type.name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{type.description}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </Card>
+
+                        {/* AI Model & Tone */}
+                        <Card className="bg-white/50 backdrop-blur-sm border-indigo-50 ring-1 ring-indigo-100 dark:bg-gray-800/50 dark:border-gray-700 dark:ring-0">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">AI Settings</h3>
+                            <div className="space-y-4">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Configuration</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label htmlFor="aiModelSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI Model</label>
-                                            <select
-                                                id="aiModelSelect"
-                                                name="aiModelSelect"
-                                                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3"
-                                                value={formData.model}
-                                                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI Model</label>
+                                    <select
+                                        className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3"
+                                        value={formData.model}
+                                        onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                                    >
+                                        {availableModels.map((m) => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tone</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TONES.map(t => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setFormData({ ...formData, tone: t })}
+                                                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${formData.tone === t
+                                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300'
+                                                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'
+                                                    }`}
                                             >
-                                                {(activeTab === 'image' ? IMAGE_MODELS : availableModels).map((m: { id: string; name: string }) => (
-                                                    <option key={m.id} value={m.id}>{m.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {activeTab !== 'image' && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tone</label>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {TONES.map(t => (
-                                                        <button
-                                                            key={t}
-                                                            onClick={() => setFormData({ ...formData, tone: t })}
-                                                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${formData.tone === t
-                                                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300'
-                                                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'
-                                                                }`}
-                                                        >
-                                                            {t}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {activeTab === 'image' && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Aspect Ratio</label>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {['1:1', '16:9', '9:16'].map(ratio => (
-                                                        <button
-                                                            key={ratio}
-                                                            onClick={() => setFormData({ ...formData, aspectRatio: ratio })}
-                                                            className={`px-3 py-2 rounded-md text-sm font-medium border text-center transition-colors ${formData.aspectRatio === ratio
-                                                                ? 'bg-pink-50 border-pink-200 text-pink-700'
-                                                                : 'bg-white border-gray-200 text-gray-600'
-                                                                }`}
-                                                        >
-                                                            {ratio}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
+                                                {t}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
+
+                                {/* Options */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.seoOptimized}
+                                            onChange={(e) => setFormData({ ...formData, seoOptimized: e.target.checked })}
+                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-gray-700 dark:text-gray-300">SEO Optimized</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.includeHeroImage}
+                                            onChange={(e) => setFormData({ ...formData, includeHeroImage: e.target.checked })}
+                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-gray-700 dark:text-gray-300">Generate Hero Image Prompt</span>
+                                    </label>
+                                </div>
                             </div>
+                        </Card>
+
+                        {/* Custom Instructions */}
+                        <Card className="bg-white/50 backdrop-blur-sm border-indigo-50 ring-1 ring-indigo-100 dark:bg-gray-800/50 dark:border-gray-700 dark:ring-0">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Custom Instructions</h3>
+                            <textarea
+                                rows={3}
+                                placeholder="E.g., Include a 20% discount code SUMMER20, mention free shipping over $50..."
+                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 text-sm"
+                                value={formData.customInstructions}
+                                onChange={(e) => setFormData({ ...formData, customInstructions: e.target.value })}
+                            />
                         </Card>
                     </div>
 
-                    {/* Input/Output Area */}
-                    <div className="lg:col-span-2 space-y-6">
-                        <Card className="min-h-[600px] flex flex-col relative overflow-hidden">
-                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-b from-gray-50/50 to-transparent dark:from-gray-800/50">
-
-                                {/* EMAIL FORM */}
-                                {activeTab === 'email' && (
-                                    <div className="space-y-4">
-                                        <label htmlFor="emailTypeSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Type</label>
-                                        <select
-                                            id="emailTypeSelect"
-                                            name="emailTypeSelect"
-                                            className="w-full rounded-lg border-gray-300 p-2"
-                                            value={formData.emailType}
-                                            onChange={(e) => setFormData({ ...formData, emailType: e.target.value })}
-                                        >
-                                            <option value="newsletter">Newsletter Body</option>
-                                            <option value="subject">Subject Lines</option>
-                                            <option value="promotional">Promotional Blast</option>
-                                            <option value="welcome">Welcome Email</option>
-                                            <option value="abandoned_cart">Abandoned Cart Recovery</option>
-                                        </select>
-
-                                        <label htmlFor="emailContextInput" className="sr-only">Main Topic</label>
-                                        <input
-                                            id="emailContextInput"
-                                            name="emailContextInput"
-                                            type="text"
-                                            placeholder="Main Topic / Context (e.g. Summer Sale)"
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.context}
-                                            onChange={(e) => setFormData({ ...formData, context: e.target.value })}
-                                        />
-
-                                        <label htmlFor="emailCustomPrompt" className="sr-only">Custom Instructions</label>
-                                        <textarea
-                                            id="emailCustomPrompt"
-                                            name="emailCustomPrompt"
-                                            rows={3}
-                                            placeholder="Custom instructions..."
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.customPrompt}
-                                            onChange={(e) => setFormData({ ...formData, customPrompt: e.target.value })}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* AD COPY FORM */}
-                                {activeTab === 'ad' && (
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label htmlFor="adPlatformSelect" className="block text-sm font-medium text-gray-700">Platform</label>
-                                                <select
-                                                    id="adPlatformSelect"
-                                                    name="adPlatformSelect"
-                                                    className="w-full rounded-lg border-gray-300 p-2"
-                                                    value={formData.platform}
-                                                    onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                                                >
-                                                    <option value="meta">Meta (Facebook/Instagram)</option>
-                                                    <option value="google">Google Ads</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label htmlFor="adProductNameInput" className="block text-sm font-medium text-gray-700">Product Name</label>
-                                                <input
-                                                    id="adProductNameInput"
-                                                    name="adProductNameInput"
-                                                    type="text"
-                                                    className="w-full rounded-lg border-gray-300 p-2"
-                                                    value={formData.productName}
-                                                    onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <label htmlFor="adProductDescription" className="sr-only">Product Description</label>
-                                        <textarea
-                                            id="adProductDescription"
-                                            name="adProductDescription"
-                                            rows={3}
-                                            placeholder="Product Description..."
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.productDescription}
-                                            onChange={(e) => setFormData({ ...formData, productDescription: e.target.value })}
-                                        />
-
-                                        <label htmlFor="adTargetAudience" className="sr-only">Target Audience</label>
-                                        <input
-                                            id="adTargetAudience"
-                                            name="adTargetAudience"
-                                            type="text"
-                                            placeholder="Target Audience (e.g. Busy moms, Tech enthusiasts)"
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.targetAudience}
-                                            onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* PRODUCT FORM */}
-                                {activeTab === 'product' && (
-                                    <div className="space-y-4">
-                                        <label htmlFor="prodNameInput" className="sr-only">Product Name</label>
-                                        <input
-                                            id="prodNameInput"
-                                            name="prodNameInput"
-                                            type="text"
-                                            placeholder="Product Name"
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.productName}
-                                            onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
-                                        />
-
-                                        <label htmlFor="prodDescInput" className="sr-only">Current Description</label>
-                                        <textarea
-                                            id="prodDescInput"
-                                            name="prodDescInput"
-                                            rows={3}
-                                            placeholder="Current Draft / Rough Notes..."
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.productDescription}
-                                            onChange={(e) => setFormData({ ...formData, productDescription: e.target.value })}
-                                        />
-
-                                        <label htmlFor="prodFeaturesInput" className="sr-only">Key Features</label>
-                                        <input
-                                            id="prodFeaturesInput"
-                                            name="prodFeaturesInput"
-                                            type="text"
-                                            placeholder="Key Features (comma separated)"
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.keyFeatures}
-                                            onChange={(e) => setFormData({ ...formData, keyFeatures: e.target.value })}
-                                        />
-
-                                        <label htmlFor="prodSeoInput" className="sr-only">SEO Keywords</label>
-                                        <input
-                                            id="prodSeoInput"
-                                            name="prodSeoInput"
-                                            type="text"
-                                            placeholder="SEO Keywords (comma separated)"
-                                            className="w-full rounded-lg border-gray-300 p-3"
-                                            value={formData.seoKeywords}
-                                            onChange={(e) => setFormData({ ...formData, seoKeywords: e.target.value })}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* VISUALS FORM */}
-                                {activeTab === 'image' && (
-                                    <>
-                                        <label htmlFor="imagePromptInput" className="sr-only">Image Prompt</label>
-                                        <textarea
-                                            id="imagePromptInput"
-                                            name="imagePromptInput"
-                                            rows={4}
-                                            placeholder="Describe your image..."
-                                            className="w-full rounded-lg border-gray-300 p-3 focus:ring-pink-500"
-                                            value={formData.prompt}
-                                            onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                                        />
-                                    </>
-                                )}
-
-                                <div className="mt-6 flex justify-end">
-                                    <Button
-                                        onClick={handleGenerate}
-                                        disabled={loading}
-                                        className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-2.5 rounded-full shadow-lg hover:shadow-xl transition-all font-medium flex items-center gap-2"
-                                    >
-                                        {loading ? (
-                                            <>
-                                                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                                                Generating...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <SparklesIcon className="w-5 h-5" />
-                                                Generate
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
+                    {/* Middle Column: Product Selection */}
+                    <div className="lg:col-span-1">
+                        <Card className="h-full">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <ShoppingBagIcon className="w-5 h-5 text-indigo-500" />
+                                    Select Products
+                                </h3>
+                                <span className="text-sm text-gray-500">{selectedProducts.length} selected</span>
                             </div>
 
-                            {/* RESULTS AREA */}
-                            <div className="flex-1 p-6 bg-gray-50/30 dark:bg-gray-900/30 overflow-y-auto">
-                                {(result || generatedImage) ? (
-                                    <div className="animate-fade-in">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Generated Output</h3>
-                                        </div>
-                                        {generatedImage ? (
-                                            <div className="flex justify-center bg-gray-900 rounded-lg p-2">
-                                                {generatedImage.includes('PLACEHOLDER') ? (
-                                                    <div className="text-center p-8 text-gray-400">
-                                                        <PhotoIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                                                        <p>Image Generation Placeholder</p>
-                                                    </div>
+                            {productsLoading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <ArrowPathIcon className="w-6 h-6 animate-spin text-gray-400" />
+                                </div>
+                            ) : (
+                                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                                    {shopifyProducts.map(product => (
+                                        <button
+                                            key={product.id}
+                                            onClick={() => toggleProductSelection(product.id)}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${selectedProducts.includes(product.id)
+                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-200'
+                                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            <div className="w-12 h-12 rounded-md bg-gray-100 dark:bg-gray-700 flex-shrink-0 overflow-hidden">
+                                                {product.images?.[0]?.src ? (
+                                                    <img src={product.images[0].src} alt={product.title} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <img src={generatedImage} alt="Generated" className="max-w-full h-auto rounded" />
+                                                    <PhotoIcon className="w-6 h-6 m-3 text-gray-400" />
                                                 )}
                                             </div>
-                                        ) : renderTextResult()}
-                                    </div>
-                                ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
-                                        <SparklesIcon className="w-12 h-12 mb-4" />
-                                        <p>Select a tool and start generating</p>
-                                    </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.title}</div>
+                                                <div className="text-xs text-gray-500">${product.variants?.[0]?.price || '0'}</div>
+                                            </div>
+                                            {selectedProducts.includes(product.id) && (
+                                                <CheckCircleIcon className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+
+                    {/* Right Column: Generate & Results */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* Generate Button */}
+                        <Card className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
+                            <div className="text-center py-4">
+                                <h3 className="text-xl font-bold mb-2">Ready to Generate</h3>
+                                <p className="text-indigo-100 text-sm mb-4">
+                                    {selectedCampaignType?.name} • {selectedProducts.length} products • {formData.tone} tone
+                                </p>
+                                <Button
+                                    onClick={handleGenerateNewsletter}
+                                    disabled={loading || selectedProducts.length === 0}
+                                    className="bg-white text-indigo-600 hover:bg-indigo-50 px-8 py-3 rounded-full shadow-lg font-semibold flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SparklesIcon className="w-5 h-5" />
+                                            Generate Complete Newsletter
+                                        </>
+                                    )}
+                                </Button>
+                                {selectedProducts.length === 0 && (
+                                    <p className="text-indigo-200 text-xs mt-2">Select at least one product</p>
                                 )}
                             </div>
                         </Card>
+
+                        {/* Error Display */}
+                        {error && (
+                            <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                    <ExclamationTriangleIcon className="w-5 h-5" />
+                                    <span>{error}</span>
+                                </div>
+                            </Card>
+                        )}
+
+                        {/* Results */}
+                        {newsletter && (
+                            <Card className="animate-fade-in">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                                    Newsletter Generated
+                                </h3>
+
+                                <div className="space-y-4">
+                                    {/* Subject & Preheader */}
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Subject Line</div>
+                                        <div className="font-medium text-gray-900 dark:text-white">{newsletter.subject}</div>
+                                    </div>
+
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Preheader</div>
+                                        <div className="text-sm text-gray-700 dark:text-gray-300">{newsletter.preheader}</div>
+                                    </div>
+
+                                    {/* CTA */}
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
+                                        <div className="text-xs text-indigo-600 uppercase tracking-wider mb-1">Call to Action</div>
+                                        <div className="font-medium text-indigo-700 dark:text-indigo-300">{newsletter.ctaText}</div>
+                                    </div>
+
+                                    {/* Hero Image Prompt */}
+                                    {newsletter.heroImagePrompt && (
+                                        <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4">
+                                            <div className="text-xs text-pink-600 uppercase tracking-wider mb-1">Hero Image Prompt</div>
+                                            <div className="text-sm text-pink-700 dark:text-pink-300">{newsletter.heroImagePrompt}</div>
+                                        </div>
+                                    )}
+
+                                    {/* SEO Meta */}
+                                    {newsletter.seoMeta && (
+                                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                                            <div className="text-xs text-green-600 uppercase tracking-wider mb-1">SEO Keywords</div>
+                                            <div className="flex flex-wrap gap-1">
+                                                {newsletter.seoMeta.keywords.map((kw, i) => (
+                                                    <span key={i} className="px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 text-xs rounded-full">{kw}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* HTML Preview Toggle */}
+                                    <details className="group">
+                                        <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                                            View Full HTML Body
+                                        </summary>
+                                        <div className="mt-2 bg-gray-900 rounded-lg p-4 max-h-[400px] overflow-y-auto">
+                                            <pre className="text-xs text-gray-300 whitespace-pre-wrap">{newsletter.htmlBody}</pre>
+                                        </div>
+                                    </details>
+
+                                    {/* Generation Meta */}
+                                    <div className="text-xs text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                        Generated with {newsletter.generationMeta.model} • {newsletter.generationMeta.productsUsed} products
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </div>
