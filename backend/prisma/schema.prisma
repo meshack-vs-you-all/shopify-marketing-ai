@@ -532,5 +532,69 @@ enum UserRole {
   VIEWER
 }
 
-// ... (existing Enums)
+// AI Settings for multi-model configuration
+model AISettings {
+  id                 String   @id @default("default")
+  
+  // Global defaults
+  defaultModel       String   @default("anthropic/claude-3.5-sonnet")
+  defaultTemperature Float    @default(0.7)
+  defaultMaxTokens   Int      @default(2048)
+  
+  // Cost limits
+  dailyBudgetLimit   Decimal  @default(50) @db.Decimal(10, 2)
+  monthlyBudgetLimit Decimal  @default(500) @db.Decimal(10, 2)
+  perRequestLimit    Decimal  @default(1) @db.Decimal(10, 2)
+  
+  // Per-task overrides (JSON structure)
+  taskOverrides      Json     @default("{}")
+  
+  // Enabled models whitelist
+  enabledModels      String[] @default([])
+  
+  // Feature flags
+  enableFallbacks    Boolean  @default(true)
+  enableCostTracking Boolean  @default(true)
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
+  @@map("ai_settings")
+}
+
+// AI Usage Log for cost tracking
+model AIUsageLog {
+  id               String   @id @default(cuid())
+  model            String
+  taskType         String
+  promptTokens     Int
+  completionTokens Int
+  cost             Decimal  @db.Decimal(10, 6)
+  timestamp        DateTime @default(now())
+  
+  // Optional request tracking
+  requestId        String?
+  userId           String?
+  
+  @@index([timestamp])
+  @@index([model])
+  @@index([taskType])
+  @@map("ai_usage_logs")
+}
+
+// Prompt Template for consistency
+model PromptTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  version   String   @default("1.0.0")
+  template  String   @db.Text
+  taskType  String
+  isActive  Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([name, version])
+  @@index([taskType, isActive])
+  @@map("prompt_templates")
+}
