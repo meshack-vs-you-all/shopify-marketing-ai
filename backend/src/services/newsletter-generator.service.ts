@@ -5,11 +5,13 @@
  * - Shopify product integration
  * - SEO optimization
  * - Complete email structure (subject, preheader, body, CTA)
+ * - GeneratedContent persistence
  */
 
 import { aiService } from './ai.service';
 import { shopifyService } from './shopify.service';
 import { logger } from '../utils/logger';
+import { prisma } from '../config/database';
 
 export interface NewsletterProduct {
     id: string;
@@ -50,12 +52,14 @@ export interface NewsletterResponse {
         model: string;
         productsUsed: number;
         timestamp: string;
+        generatedContentId?: string;
     };
 }
 
 class NewsletterGeneratorService {
     /**
      * Generate a complete newsletter with all components
+     * Persists to GeneratedContent for audit trail
      */
     async generateNewsletter(request: NewsletterRequest): Promise<NewsletterResponse> {
         logger.info('Starting newsletter generation', { campaignType: request.campaignType });
@@ -94,6 +98,42 @@ class NewsletterGeneratorService {
             seoMeta = this.extractSEOMeta(parsed, products);
         }
 
+        // Step 7: Persist to GeneratedContent (A3 requirement)
+        let generatedContentId: string | undefined;
+        try {
+            const savedContent = await prisma.generatedContent.create({
+                data: {
+                    type: 'EMAIL_BODY',
+                    platform: 'EMAIL',
+                    prompt: prompt,
+                    model: response.model || 'unknown',
+                    content: JSON.stringify({
+                        subject: parsed.subject,
+                        preheader: parsed.preheader,
+                        htmlBody: parsed.htmlBody,
+                        textBody: parsed.textBody,
+                        ctaText: parsed.ctaText,
+                        heroImagePrompt,
+                        seoMeta,
+                    }),
+                    metadata: {
+                        campaignType: request.campaignType,
+                        campaignName: request.campaignName,
+                        productsUsed: products.length,
+                        productIds: request.productIds,
+                        tone: request.tone,
+                        seoOptimized: request.seoOptimized,
+                    },
+                    status: 'GENERATED',
+                },
+            });
+            generatedContentId = savedContent.id;
+            logger.info('Generated content persisted', { id: savedContent.id });
+        } catch (error: any) {
+            logger.warn('Failed to persist generated content', { error: error.message });
+            // Non-blocking: continue even if persistence fails
+        }
+
         return {
             ...parsed,
             heroImagePrompt,
@@ -102,6 +142,7 @@ class NewsletterGeneratorService {
                 model: response.model || 'unknown',
                 productsUsed: products.length,
                 timestamp: new Date().toISOString(),
+                generatedContentId,
             },
         };
     }
