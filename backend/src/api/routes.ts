@@ -15,6 +15,8 @@ import promptTemplatesRoutes from './prompt-templates.routes';
 import accountRoutes from './account.routes';
 import shopifyWebhooksRoutes from './shopify-webhooks.routes';
 
+import unsubscribeRoutes from './unsubscribe.routes';
+
 const router: Router = Router();
 
 // Health check (no authentication required)
@@ -24,6 +26,9 @@ router.get('/health', (_req, res) => {
 
 // Auth Routes (Public)
 router.use('/auth', authRoutes);
+
+// Unsubscribe (Public)
+router.use('/unsubscribe', unsubscribeRoutes);
 
 // AI Routes (protected)
 // AI Routes (temporarily public for testing)
