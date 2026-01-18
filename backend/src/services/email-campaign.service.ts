@@ -6,6 +6,7 @@ import { CampaignStatus, DeliveryStatus, SubscriberStatus } from '@prisma/client
 import { Queue } from 'bullmq';
 
 import { emailQueue } from '../workers/queues';
+import { welcomeEmailService } from './welcome-email.service';
 
 interface AddSubscriberParams {
   email: string;
@@ -60,7 +61,7 @@ class EmailCampaignService {
     });
   }
 
-  async addSubscriber(params: AddSubscriberParams) {
+  async addSubscriber(params: AddSubscriberParams & { triggerWelcomeEmail?: boolean }) {
     // Check if subscriber already exists in this list
     const existing = await prisma.subscriber.findUnique({
       where: {
@@ -81,9 +82,27 @@ class EmailCampaignService {
       return existing;
     }
 
-    return prisma.subscriber.create({
-      data: params
+    const subscriber = await prisma.subscriber.create({
+      data: {
+        email: params.email,
+        firstName: params.firstName,
+        lastName: params.lastName,
+        listId: params.listId,
+        importSource: params.importSource
+      }
     });
+
+    // Trigger welcome email for new subscribers (default: enabled)
+    if (params.triggerWelcomeEmail !== false) {
+      try {
+        await welcomeEmailService.triggerWelcomeEmail(subscriber.id);
+        logger.info('Welcome email queued for new subscriber', { subscriberId: subscriber.id });
+      } catch (error: any) {
+        logger.warn('Failed to queue welcome email', { subscriberId: subscriber.id, error: error.message });
+      }
+    }
+
+    return subscriber;
   }
 
   async getSubscribers(listId: string) {

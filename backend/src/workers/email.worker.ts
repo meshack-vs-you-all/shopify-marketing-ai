@@ -3,6 +3,7 @@ import Redis from 'ioredis';
 import { logger } from '../utils/logger';
 import { prisma } from '../config/database';
 import { emailService } from '../services/email.service';
+import { welcomeEmailService } from '../services/welcome-email.service';
 import { CampaignStatus, DeliveryStatus, EmailCampaign } from '@prisma/client';
 import pLimit from 'p-limit';
 import { EMAIL_QUEUE_NAME } from './queues';
@@ -17,12 +18,17 @@ const RATE_LIMIT = parseInt(process.env.SES_RATE_LIMIT || '14', 10);
 const limit = pLimit(RATE_LIMIT);
 
 interface EmailJobData {
-  campaignId: string;
+  campaignId?: string;
   isUnified?: boolean;
+  // Welcome email specific
+  subscriberId?: string;
+  listId?: string;
+  useAI?: boolean;
+  storeName?: string;
 }
 
 /**
- * Worker to process email campaigns
+ * Worker to process email campaigns and welcome emails
  * It fetches the campaign, iterates over subscribers, and sends emails.
  * For very large lists, this should be split into batches, but for this implementation
  * we process the whole list in one job with concurrency control.
@@ -30,7 +36,25 @@ interface EmailJobData {
 export const emailWorker = new Worker<EmailJobData>(
   EMAIL_QUEUE_NAME,
   async (job: Job<EmailJobData>) => {
+    // Handle welcome email job type
+    if (job.name === 'send-welcome-email') {
+      const { subscriberId, useAI, storeName } = job.data;
+      if (!subscriberId) {
+        throw new Error('subscriberId required for welcome email');
+      }
+      logger.info('Processing welcome email', { subscriberId });
+      const result = await welcomeEmailService.sendWelcomeEmail(subscriberId, { useAI, storeName });
+      if (!result.success) {
+        throw new Error(result.error || 'Welcome email failed');
+      }
+      return result;
+    }
+
+    // Handle campaign email job type
     const { campaignId, isUnified } = job.data;
+    if (!campaignId) {
+      throw new Error('campaignId required for campaign email');
+    }
     logger.info(`Starting email campaign sending`, { campaignId, isUnified });
 
     try {
