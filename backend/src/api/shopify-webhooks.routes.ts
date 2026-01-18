@@ -14,6 +14,22 @@ const router = Router();
 // Shopify webhook secret for HMAC verification
 const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET || '';
 
+// Webhook topics to register
+export const REQUIRED_WEBHOOKS = [
+    'orders/create',
+    'orders/fulfilled',
+    'checkouts/create',
+    'checkouts/update',
+    'customers/create',
+    'customers/update',
+    'products/create',
+    'products/update',
+    'products/delete',
+    'shop/update',
+    'app/uninstalled',
+    'refunds/create'
+];
+
 /**
  * Verify Shopify webhook HMAC signature
  */
@@ -268,6 +284,164 @@ router.post('/products/update', async (req: Request, res: Response) => {
     } catch (error: any) {
         logger.error('Error processing product update webhook', { error: error.message });
         res.status(200).json({ received: true, error: error.message });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/customers/update
+ * Triggered when customer data changes
+ */
+router.post('/customers/update', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const customer = req.body;
+        logger.info('Received customer update webhook', { id: customer.id, email: customer.email });
+
+        // Compliance: Handle marketing opt-out
+        // If customer exists in our DB and has revoked consent in Shopify, we must unsubscribe them
+        if (customer.email && !customer.accepts_marketing) {
+            // TODO: Update local DB subscriber status to UNSUBSCRIBED
+            // await prisma.subscriber.updateMany({
+            //   where: { email: customer.email },
+            //   data: { status: 'UNSUBSCRIBED' }
+            // });
+            logger.info('Customer opted out of marketing in Shopify - sync required', { email: customer.email });
+        }
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing customer update', { error: error.message });
+        res.status(200).json({ received: true });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/customers/redact
+ * Mandatory GDPR endpoint
+ */
+router.post('/customers/redact', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const payload = req.body;
+        logger.info('Received customer redact request (GDPR)', {
+            shop_domain: payload.shop_domain,
+            customer: payload.customer
+        });
+
+        // 1. Erase PII for this customer from DB
+        // 2. Remove from mailing lists
+        // await prisma.subscriber.deleteMany({ where: { email: payload.customer.email } });
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing customer redact', { error: error.message });
+        res.status(200).json({ received: true });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/shop/update
+ * Keep store settings in sync
+ */
+router.post('/shop/update', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const shop = req.body;
+        logger.info('Received shop update webhook', { domain: shop.domain });
+
+        // Update local store configuration if needed
+        // e.g. currency, timezone, contact email
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing shop update', { error: error.message });
+        res.status(200).json({ received: true });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/app/uninstalled
+ * Mandatory cleanup hook
+ */
+router.post('/app/uninstalled', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const payload = req.body;
+        logger.warn('App uninstalled by shop', { domain: payload.domain });
+
+        // 1. Mark store as inactive
+        // 2. Cancel all pending jobs for this store
+        // 3. Clear sensitive tokens
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing app uninstall', { error: error.message });
+        res.status(200).json({ received: true });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/checkouts/update
+ * Restart abandoned cart timer
+ */
+router.post('/checkouts/update', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const checkout = req.body;
+        // Logic: Cancel existing 'abandoned_cart' job for this checkout ID if exists,
+        // then schedule a new one? Or relies on the worker to check 'updated_at'?
+        // For now, simpler to just log support.
+        logger.info('Received checkout update - activity detected', { id: checkout.id });
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing checkout update', { error: error.message });
+        res.status(200).json({ received: true });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/products/delete
+ * Catalog hygiene
+ */
+router.post('/products/delete', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const payload = req.body;
+        logger.info('Product deleted', { id: payload.id });
+
+        // Remove from any active campaigns or recommendations
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing product delete', { error: error.message });
+        res.status(200).json({ received: true });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/refunds/create
+ * Post-purchase care
+ */
+router.post('/refunds/create', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+        const refund = req.body;
+        logger.info('Refund created', { order_id: refund.order_id, refund_id: refund.id });
+
+        // Trigger "Refund Processed" email if configured
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing refund create', { error: error.message });
+        res.status(200).json({ received: true });
     }
 });
 
