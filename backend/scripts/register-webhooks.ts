@@ -1,4 +1,4 @@
-
+import '@shopify/shopify-api/adapters/node';
 import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
 import { REQUIRED_WEBHOOKS } from '../src/api/shopify-webhooks.routes';
 import dotenv from 'dotenv';

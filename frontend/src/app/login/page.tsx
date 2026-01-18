@@ -86,9 +86,9 @@ export default function LoginPage() {
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               New here?{' '}
-              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
-                Create an account
-              </a>
+              <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+                Sign up
+              </Link>
             </p>
           </div>
 
