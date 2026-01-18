@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { prisma } from '../config/database';
 import { emailService } from '../services/email.service';
 import { welcomeEmailService } from '../services/welcome-email.service';
+import { transactionalEmailService, TransactionalEmailData } from '../services/transactional-email.service';
 import { CampaignStatus, DeliveryStatus, EmailCampaign } from '@prisma/client';
 import pLimit from 'p-limit';
 import { EMAIL_QUEUE_NAME } from './queues';
@@ -25,6 +26,12 @@ interface EmailJobData {
   listId?: string;
   useAI?: boolean;
   storeName?: string;
+  isFollowUp?: boolean;
+  // Transactional email specific
+  type?: 'order_confirmation' | 'order_shipped' | 'abandoned_cart' | 'shopify_welcome';
+  to?: string;
+  checkoutId?: string;
+  data?: TransactionalEmailData['data'];
 }
 
 /**
@@ -38,15 +45,41 @@ export const emailWorker = new Worker<EmailJobData>(
   async (job: Job<EmailJobData>) => {
     // Handle welcome email job type
     if (job.name === 'send-welcome-email') {
-      const { subscriberId, useAI, storeName } = job.data;
+      const { subscriberId, useAI, storeName, isFollowUp } = job.data;
       if (!subscriberId) {
         throw new Error('subscriberId required for welcome email');
       }
-      logger.info('Processing welcome email', { subscriberId });
-      const result = await welcomeEmailService.sendWelcomeEmail(subscriberId, { useAI, storeName });
+      logger.info('Processing welcome email', { subscriberId, isFollowUp });
+      const result = await welcomeEmailService.sendWelcomeEmail(subscriberId, { useAI, storeName, isFollowUp });
       if (!result.success) {
         throw new Error(result.error || 'Welcome email failed');
       }
+      return result;
+    }
+
+    // Handle transactional email job type (Shopify webhooks)
+    if (job.name === 'send-transactional-email') {
+      const { type, to, data, checkoutId } = job.data;
+      if (!type || !to) {
+        logger.error('Transactional email missing required fields', { type, to });
+        throw new Error('type and to required for transactional email');
+      }
+
+      logger.info('Processing transactional email', { type, to, checkoutId });
+
+      const result = await transactionalEmailService.send({
+        type,
+        to,
+        checkoutId,
+        data: data || {},
+      });
+
+      if (!result.success) {
+        logger.error('Transactional email failed', { type, to, error: result.error });
+        throw new Error(result.error || 'Transactional email failed');
+      }
+
+      logger.info('Transactional email sent successfully', { type, to, messageId: result.messageId });
       return result;
     }
 
