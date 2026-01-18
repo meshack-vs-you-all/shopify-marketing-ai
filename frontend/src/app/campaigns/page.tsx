@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { HelpTooltip } from '@/components/HelpTooltip';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 interface Campaign {
   id: string;
@@ -32,6 +33,22 @@ export default function CampaignsPage() {
   useEffect(() => {
     loadCampaigns();
   }, [filters]);
+
+  const handleDelete = async (id: string, name: string) => {
+    // Prevent navigation from Link
+    if (!window.confirm(`Are you sure you want to delete campaign "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.deleteCampaign(id);
+      await loadCampaigns(); // Reload list
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete campaign');
+      setLoading(false);
+    }
+  };
 
   const loadCampaigns = async () => {
     try {
@@ -215,6 +232,16 @@ export default function CampaignsPage() {
                             <span className={`w-2 h-2 rounded-full ${statusColors.dot}`}></span>
                             <span>{campaign.status}</span>
                           </span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDelete(campaign.id, campaign.name);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete Campaign"
+                          >
+                            <TrashIcon className="w-5 h-5" />
+                          </button>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
@@ -233,13 +260,12 @@ export default function CampaignsPage() {
                           <div>
                             <p className="text-xs text-gray-500 mb-1">ROAS</p>
                             <p
-                              className={`text-sm font-semibold ${
-                                campaign.roas && campaign.roas >= 2
-                                  ? 'text-green-600'
-                                  : campaign.roas
+                              className={`text-sm font-semibold ${campaign.roas && campaign.roas >= 2
+                                ? 'text-green-600'
+                                : campaign.roas
                                   ? 'text-red-600'
                                   : 'text-gray-400'
-                              }`}
+                                }`}
                             >
                               {campaign.roas ? `${campaign.roas.toFixed(2)}x` : '-'}
                             </p>
@@ -297,6 +323,9 @@ export default function CampaignsPage() {
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Performance
                       </th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -338,9 +367,8 @@ export default function CampaignsPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {campaign.roas ? (
                               <span
-                                className={`font-semibold ${
-                                  campaign.roas >= 2 ? 'text-green-600' : 'text-red-600'
-                                }`}
+                                className={`font-semibold ${campaign.roas >= 2 ? 'text-green-600' : 'text-red-600'
+                                  }`}
                               >
                                 {campaign.roas.toFixed(2)}x
                               </span>
@@ -366,6 +394,18 @@ export default function CampaignsPage() {
                               )}
                             </div>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDelete(campaign.id, campaign.name);
+                              }}
+                              className="text-gray-400 hover:text-red-600 transition-colors"
+                              title="Delete Campaign"
+                            >
+                              <TrashIcon className="w-5 h-5" />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -376,6 +416,6 @@ export default function CampaignsPage() {
           </>
         )}
       </div>
-    </ProtectedRoute>
+    </ProtectedRoute >
   );
 }

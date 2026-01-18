@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { api } from '@/lib/api';
+import { signIn } from 'next-auth/react';
 import {
   EyeIcon,
   EyeSlashIcon,
@@ -95,9 +96,8 @@ export default function LoginPage() {
           <div className="space-y-4">
             <button
               type="button"
-              disabled
-              title="Google Sign-In configuration required"
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 opacity-60 cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-750 transition-all"
+              onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
