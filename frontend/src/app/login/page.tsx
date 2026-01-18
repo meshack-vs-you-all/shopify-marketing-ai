@@ -162,8 +162,8 @@ export default function LoginPage() {
                     type="email"
                     autoComplete="email"
                     className={`block w-full pl-10 pr-3 py-3 rounded-lg border focus:ring-2 focus:ring-indigo-500 transition-shadow bg-gray-50 dark:bg-gray-800 dark:text-white ${errors.email
-                        ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500'
-                        : 'border-gray-300 dark:border-gray-700 focus:border-indigo-500'
+                      ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500'
+                      : 'border-gray-300 dark:border-gray-700 focus:border-indigo-500'
                       }`}
                     placeholder="you@example.com"
                     {...register('email')}
@@ -189,8 +189,8 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     className={`block w-full pl-10 pr-10 py-3 rounded-lg border focus:ring-2 focus:ring-indigo-500 transition-shadow bg-gray-50 dark:bg-gray-800 dark:text-white ${errors.password
-                        ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500'
-                        : 'border-gray-300 dark:border-gray-700 focus:border-indigo-500'
+                      ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500'
+                      : 'border-gray-300 dark:border-gray-700 focus:border-indigo-500'
                       }`}
                     placeholder="••••••••"
                     {...register('password')}
@@ -264,8 +264,16 @@ export default function LoginPage() {
         </div>
 
         {/* Footer info */}
-        <div className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400">
-          <p>&copy; 2026 Crafted Edge Solutions. All rights reserved.</p>
+        <div className="mt-10 text-center space-y-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            By signing in, you agree to our{' '}
+            <a href="/terms" className="text-indigo-600 hover:underline dark:text-indigo-400">Terms</a>
+            {' '}and{' '}
+            <a href="/privacy" className="text-indigo-600 hover:underline dark:text-indigo-400">Privacy Policy</a>.
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            &copy; 2026 Crafted Edge Solutions. All rights reserved.
+          </p>
         </div>
       </div>
 
