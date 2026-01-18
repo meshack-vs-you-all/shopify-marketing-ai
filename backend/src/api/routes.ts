@@ -11,6 +11,9 @@ import authRoutes from './auth.routes';
 
 import settingsRoutes from './settings.routes';
 import shopifyRoutes from './shopify.routes';
+import promptTemplatesRoutes from './prompt-templates.routes';
+import accountRoutes from './account.routes';
+import shopifyWebhooksRoutes from './shopify-webhooks.routes';
 
 const router: Router = Router();
 
@@ -26,6 +29,9 @@ router.use('/auth', authRoutes);
 // AI Routes (temporarily public for testing)
 router.use('/ai', aiRoutes);
 
+// Shopify Webhooks (Public, but HMAC verified)
+router.use('/webhooks/shopify', shopifyWebhooksRoutes);
+
 // Protected Routes
 router.use('/campaigns', authenticate, campaignsRoutes);
 router.use('/email-campaigns', authenticate, emailCampaignsRoutes);
@@ -33,6 +39,8 @@ router.use('/campaigns/wizard', authenticate, campaignWizardRoutes);
 router.use('/approvals', authenticate, approvalsRoutes);
 router.use('/settings', authenticate, settingsRoutes);
 router.use('/shopify', shopifyRoutes);
+router.use('/prompt-templates', authenticate, promptTemplatesRoutes);
+router.use('/account', accountRoutes); // Auth handled internally per route
 
 // Analytics endpoint (placeholder)
 router.get('/analytics', async (req, res) => {
