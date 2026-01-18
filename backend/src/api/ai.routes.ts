@@ -13,6 +13,7 @@ import { logger } from '../utils/logger';
 import { ModelRegistry } from '../services/ai/model-registry';
 import { createOpenRouterProvider } from '../services/ai/openrouter.provider';
 import { newsletterGeneratorService } from '../services/newsletter-generator.service';
+import { aiRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -233,7 +234,7 @@ router.get('/usage', async (req: Request, res: Response) => {
  * POST /api/ai/generate
  * General-purpose AI generation with model selection
  */
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/generate', aiRateLimiter, async (req: Request, res: Response) => {
     const startTime = Date.now();
 
     try {
@@ -346,7 +347,7 @@ router.post('/generate', async (req: Request, res: Response) => {
  * Generate a complete newsletter with all components in one action
  * Integrates Shopify products and SEO optimization
  */
-router.post('/generate/newsletter', async (req: Request, res: Response) => {
+router.post('/generate/newsletter', aiRateLimiter, async (req: Request, res: Response) => {
     const startTime = Date.now();
 
     try {
