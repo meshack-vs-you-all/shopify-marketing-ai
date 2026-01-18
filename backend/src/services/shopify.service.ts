@@ -106,8 +106,8 @@ class ShopifyService {
       const hostName = process.env.API_URL?.replace('https://', '').replace('http://', '') || 'localhost:5000';
 
       const shopify = shopifyApi({
-        apiKey,
-        apiSecretKey,
+        apiKey: apiKey || '',
+        apiSecretKey: apiSecretKey || '',
         scopes,
         hostName,
         apiVersion: LATEST_API_VERSION,
