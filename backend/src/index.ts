@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { enforceHttps, securityHeaders } from './middleware/security';
 import { validateEnv } from './config/validateEnv';
 import apiRoutes from './api/routes';
 import './workers/email.worker'; // Initialize email worker
@@ -18,8 +19,12 @@ validateEnv();
 const app: Express = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
+// HTTPS enforcement (first - before any other middleware)
+app.use(enforceHttps);
+
 // Security middleware
 app.use(helmet());
+app.use(securityHeaders);
 app.use(cors({
   origin: [
     process.env.CORS_ORIGIN || '',
