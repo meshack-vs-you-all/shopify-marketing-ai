@@ -19,13 +19,14 @@ export interface WelcomeEmailConfig {
     subject?: string;
     htmlTemplate?: string;
     delayMs?: number; // Delay in milliseconds (e.g., 24 hours = 86400000)
-    useAI?: boolean;
-    storeName?: string;
+    enableFollowUp?: boolean;
+    followUpDelayMs?: number; // Default 3 days
 }
 
 export interface WelcomeEmailResult {
     success: boolean;
     jobId?: string;
+    followUpJobId?: string;
     subscriberId: string;
     scheduledFor?: Date;
     error?: string;
@@ -67,6 +68,30 @@ const DEFAULT_WELCOME_HTML = `
     <p>You received this email because you subscribed to {{storeName}}.</p>
     <p><a href="{{unsubscribeUrl}}">Unsubscribe</a></p>
   </div>
+</body>
+</html>
+`;
+
+const DEFAULT_FOLLOWUP_SUBJECT = 'How are things going? 👋';
+const DEFAULT_FOLLOWUP_HTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .cta { display: inline-block; background: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <p>Hi {{firstName}},</p>
+  <p>Just checking in to see if you've had a chance to browse our latest collection at {{storeName}}.</p>
+  <p>Don't forget your 10% discount is still waiting for you!</p>
+  <p style="text-align: center; margin: 30px 0;">
+    <a href="{{shopUrl}}" class="cta">Visit Store</a>
+  </p>
+  <p style="font-size: 14px; color: #666;">
+    <a href="{{unsubscribeUrl}}">Unsubscribe</a>
+  </p>
 </body>
 </html>
 `;
@@ -128,11 +153,37 @@ class WelcomeEmailService {
                     listId: subscriber.listId,
                     useAI: config?.useAI ?? false,
                     storeName: config?.storeName || 'Our Store',
+                    isFollowUp: false,
                 },
                 jobOptions
             );
 
             const scheduledFor = delayMs > 0 ? new Date(Date.now() + delayMs) : undefined;
+            let followUpJobId: string | undefined;
+
+            // Queue Follow-Up (Drip)
+            if (config?.enableFollowUp !== false) { // Default to true if undefined for now, or use config
+                // For safety, let's strictly check config. In this case, I'll enable valid defaults.
+                // P1 requirement: Welcome -> Day 3 follow up.
+                const isFollowUpEnabled = config?.enableFollowUp ?? true; // Enable by default for growth
+
+                if (isFollowUpEnabled) {
+                    const followUpDelay = config?.followUpDelayMs || 259200000; // 3 days default
+                    const followUpJob = await emailQueue.add(
+                        'send-welcome-email',
+                        {
+                            subscriberId,
+                            listId: subscriber.listId,
+                            useAI: config?.useAI ?? false,
+                            storeName: config?.storeName || 'Our Store',
+                            isFollowUp: true,
+                        },
+                        { delay: followUpDelay }
+                    );
+                    followUpJobId = followUpJob.id;
+                    logger.info('Follow-up email queued', { subscriberId, jobId: followUpJobId, delay: followUpDelay });
+                }
+            }
 
             logger.info('Welcome email queued', {
                 subscriberId,
@@ -144,6 +195,7 @@ class WelcomeEmailService {
             return {
                 success: true,
                 jobId: job.id,
+                followUpJobId,
                 subscriberId,
                 scheduledFor
             };
@@ -158,7 +210,7 @@ class WelcomeEmailService {
      */
     async sendWelcomeEmail(
         subscriberId: string,
-        options: { useAI?: boolean; storeName?: string }
+        options: { useAI?: boolean; storeName?: string; isFollowUp?: boolean }
     ): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             const subscriber = await prisma.subscriber.findUnique({
@@ -170,17 +222,27 @@ class WelcomeEmailService {
                 throw new Error('Subscriber not found');
             }
 
+            // Check if still subscribed before sending follow-up
+            if (options.isFollowUp && subscriber.status !== SubscriberStatus.SUBSCRIBED) {
+                logger.info('Skipping follow-up for unsubscribed user', { subscriberId });
+                return { success: true, messageId: 'SKIPPED_UNSUBSCRIBED' };
+            }
+
             const config = this.configs.get(subscriber.listId);
-            let subject = config?.subject || DEFAULT_WELCOME_SUBJECT;
-            let htmlBody = config?.htmlTemplate || DEFAULT_WELCOME_HTML;
+
+            let subject = options.isFollowUp ? DEFAULT_FOLLOWUP_SUBJECT : (config?.subject || DEFAULT_WELCOME_SUBJECT);
+            let htmlBody = options.isFollowUp ? DEFAULT_FOLLOWUP_HTML : (config?.htmlTemplate || DEFAULT_WELCOME_HTML);
 
             // AI-enhanced personalization
             if (options.useAI) {
                 try {
+                    const promptType = options.isFollowUp ? 'follow-up' : 'welcome';
+                    const prompt = options.isFollowUp
+                        ? `Generate a friendly follow-up email for ${subscriber.firstName || 'subscriber'} 3 days after joining. Ask if they've seen the collection. Return JSON { "subject": "...", "body": "..." }`
+                        : `Generate a warm welcome email for ${subscriber.firstName || 'new subscriber'} with a 10% discount. Return JSON { "subject": "...", "body": "..." }`;
+
                     const aiResult = await aiService.generateWithFallback({
-                        prompt: `Generate a warm, personalized welcome email for ${subscriber.firstName || 'new subscriber'} who just subscribed to ${options.storeName || 'our store'}. 
-                        Keep it concise, friendly, and include a 10% discount offer.
-                        Return JSON: { "subject": "...", "body": "..." }`,
+                        prompt,
                         taskType: 'email_subject',
                         maxTokens: 1024,
                     });
@@ -204,7 +266,7 @@ class WelcomeEmailService {
             });
 
             if (result.success) {
-                logger.info('Welcome email sent', { subscriberId, messageId: result.messageId });
+                logger.info(options.isFollowUp ? 'Follow-up email sent' : 'Welcome email sent', { subscriberId, messageId: result.messageId });
             }
 
             return result;
