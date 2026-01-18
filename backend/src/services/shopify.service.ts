@@ -82,26 +82,54 @@ class ShopifyService {
     this.initialized = true;
 
     // Check if credentials are configured
-    if (!this.storeUrl || !this.accessToken || this.storeUrl === 'your-store.myshopify.com') {
+    if (!this.storeUrl || !this.accessToken) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Shopify credentials missing in production environment');
+      }
       logger.info('Shopify credentials not configured. Using mock product data for development.');
       this.useMockData = true;
       return false;
     }
 
-    try {
-      // Note: Shopify API integration is temporarily disabled due to ESM module resolution issues
-      // To enable real Shopify integration:
-      // 1. Update tsconfig.json moduleResolution to 'node16' or 'bundler'
-      // 2. Uncomment the imports below
-      // await import('@shopify/shopify-api/adapters/node');
-      // const { shopifyApi, LATEST_API_VERSION } = await import('@shopify/shopify-api');
+    // Proceed to try initialization even if storeUrl looks like a default, to verify connectivity
 
-      logger.warn('Shopify API integration pending module resolution fix. Using mock data.');
-      this.useMockData = true;
-      return false;
+
+    try {
+      // Initialize Shopify API
+      // Note: Using dynamic imports to handle ESM module resolution
+      await import('@shopify/shopify-api/adapters/node');
+      const { shopifyApi, LATEST_API_VERSION } = await import('@shopify/shopify-api');
+
+      const apiKey = process.env.SHOPIFY_API_KEY;
+      const apiSecretKey = process.env.SHOPIFY_API_SECRET;
+      const scopes = ['read_products', 'read_orders', 'read_analytics'];
+      const hostName = process.env.API_URL?.replace('https://', '').replace('http://', '') || 'localhost:5000';
+
+      const shopify = shopifyApi({
+        apiKey,
+        apiSecretKey,
+        scopes,
+        hostName,
+        apiVersion: LATEST_API_VERSION,
+        isEmbeddedApp: false,
+      });
+
+      const session = shopify.session.customAppSession(this.storeUrl);
+      session.accessToken = this.accessToken;
+
+      this.client = new shopify.clients.Rest({ session });
+
+      logger.info('Shopify service initialized successfully');
+      return true;
     } catch (error: any) {
-      logger.warn('Shopify service failed to initialize, using mock data: ' + error.message);
-      this.useMockData = true;
+      logger.error('Shopify service failed to initialize: ' + error.message);
+      // Only fall back to mock data if strictly necessary or in specific dev modes? 
+      // User request says "Never silently fall back to mock data in production"
+      // But for now, if initialization fails, we probably shouldn't set useMockData = true implicitly for prod
+      // unless we handle it explicitly. 
+      // However, to satisfy "Fail loudly if Shopify data is expected but unavailable", considering throwing or not setting mock=true
+
+      this.useMockData = false; // Ensure we don't silently switch to mock
       return false;
     }
   }
@@ -131,8 +159,8 @@ class ShopifyService {
       });
       return response.body.products || [];
     } catch (error: any) {
-      logger.error('Error fetching products from Shopify, falling back to mock', { error: error.message });
-      return MOCK_PRODUCTS.slice(0, limit);
+      logger.error('Error fetching products from Shopify', { error: error.message });
+      throw error;
     }
   }
 
@@ -153,7 +181,7 @@ class ShopifyService {
       return response.body.product;
     } catch (error: any) {
       logger.error('Error fetching product from Shopify', { error: error.message, productId });
-      return MOCK_PRODUCTS.find(p => p.id === productId) || MOCK_PRODUCTS[0];
+      throw error;
     }
   }
 
@@ -199,7 +227,7 @@ class ShopifyService {
       return topProducts;
     } catch (error: any) {
       logger.error('Error fetching top products from Shopify', { error: error.message });
-      return MOCK_PRODUCTS.slice(0, limit);
+      throw error;
     }
   }
 
@@ -227,7 +255,7 @@ class ShopifyService {
       return [...customCollections, ...smartCollections];
     } catch (error: any) {
       logger.error('Error fetching collections from Shopify', { error: error.message });
-      return [];
+      throw error;
     }
   }
 
@@ -266,7 +294,7 @@ class ShopifyService {
       return analytics;
     } catch (error: any) {
       logger.error('Error fetching store analytics from Shopify', { error: error.message });
-      return { totalOrders: 0, totalRevenue: 0, averageOrderValue: 0, orderCount: 0, isMockData: true };
+      throw error;
     }
   }
 
