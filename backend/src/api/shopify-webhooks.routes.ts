@@ -214,4 +214,61 @@ router.post('/customers/create', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /api/webhooks/shopify/products/create
+ * Triggered when a new product is created
+ */
+router.post('/products/create', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const product = req.body;
+        logger.info('Received product created webhook', {
+            productId: product.id,
+            title: product.title,
+        });
+
+        // Trigger any automation for new products (e.g. generate draft campaign)
+        // For now, we just log it as ready for future implementation
+        logger.info('New product detected - ready for campaign automation', {
+            productId: product.id,
+            title: product.title,
+            handle: product.handle
+        });
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing product create webhook', { error: error.message });
+        res.status(200).json({ received: true, error: error.message });
+    }
+});
+
+/**
+ * POST /api/webhooks/shopify/products/update
+ * Triggered when a product is updated (e.g. price drop)
+ */
+router.post('/products/update', async (req: Request, res: Response) => {
+    try {
+        if (!verifyShopifyWebhook(req)) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const product = req.body;
+        logger.info('Received product update webhook', {
+            productId: product.id,
+            title: product.title,
+        });
+
+        // Check for price drops or inventory changes here
+        // Future implementation: Logic to detect price drop > 10% and trigger alert
+
+        res.status(200).json({ received: true });
+    } catch (error: any) {
+        logger.error('Error processing product update webhook', { error: error.message });
+        res.status(200).json({ received: true, error: error.message });
+    }
+});
+
 export default router;
