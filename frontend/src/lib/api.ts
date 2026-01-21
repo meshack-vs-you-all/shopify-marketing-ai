@@ -174,6 +174,37 @@ export const api = {
   getShopifyCollections: () => apiClient.get('/api/shopify/collections'),
   getShopifyAnalytics: () => apiClient.get('/api/shopify/analytics'),
   getShopifyStatus: () => apiClient.get('/api/shopify/status'),
+
+  // Meta Publishing
+  getMetaAccounts: () => apiClient.get('/api/meta/accounts'),
+  syncMetaAccounts: (accessToken?: string) => apiClient.post('/api/meta/accounts/sync', { access_token: accessToken }),
+  getMetaStatus: () => apiClient.get('/api/meta/status'),
+  validateMetaScopes: (target: 'instagram' | 'facebook') => apiClient.get('/api/meta/validate-scopes', { params: { target } }),
+  createMetaPost: (data: {
+    target: 'instagram' | 'facebook' | 'whatsapp';
+    account_id: string;
+    media: string[];
+    caption: string;
+    schedule_at?: string | null;
+    campaign_id?: string;
+    idempotency_key?: string;
+    ai_generate?: {
+      product_info?: { name: string; description: string; price?: number };
+      tone?: 'professional' | 'casual' | 'playful' | 'luxury' | 'friendly';
+      length?: 'short' | 'medium' | 'long';
+    };
+  }) => apiClient.post('/api/meta/post', data),
+  generateMetaCaptions: (data: {
+    prompt_hints?: string;
+    product_info?: { name: string; description: string; price?: number };
+    tone?: 'professional' | 'casual' | 'playful' | 'luxury' | 'friendly';
+    length?: 'short' | 'medium' | 'long';
+    include_hashtags?: boolean;
+    platform?: 'instagram' | 'facebook';
+    creative?: boolean;
+  }) => apiClient.post('/api/meta/generate-captions', data),
+  testMetaPublish: (data: { target?: string; account_id?: string; media?: string[]; caption?: string }) =>
+    apiClient.post('/api/meta/test-publish', data),
 };
 
 export default apiClient;
