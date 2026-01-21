@@ -14,6 +14,7 @@ import shopifyRoutes from './shopify.routes';
 import promptTemplatesRoutes from './prompt-templates.routes';
 import accountRoutes from './account.routes';
 import shopifyWebhooksRoutes from './shopify-webhooks.routes';
+import metaPublishingRoutes from './meta-publishing.routes';
 
 import unsubscribeRoutes from './unsubscribe.routes';
 
@@ -46,6 +47,7 @@ router.use('/settings', authenticate, settingsRoutes);
 router.use('/shopify', shopifyRoutes);
 router.use('/prompt-templates', authenticate, promptTemplatesRoutes);
 router.use('/account', accountRoutes); // Auth handled internally per route
+router.use('/meta', authenticate, metaPublishingRoutes); // Meta Publishing routes
 
 // Analytics endpoint (placeholder)
 router.get('/analytics', async (req, res) => {
