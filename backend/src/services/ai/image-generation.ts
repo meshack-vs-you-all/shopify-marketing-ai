@@ -1,3 +1,4 @@
+
 import { logger } from '../../utils/logger';
 import axios from 'axios';
 
@@ -12,6 +13,12 @@ export interface ImageGenerationParams {
   negativePrompt?: string;
   stylePreset?: string;
   model?: string; // Optional model override
+}
+
+// Helper to extract URL from markdown or text
+function extractUrl(text: string): string | null {
+  const urlMatch = text.match(/https?:\/\/[^\s\)]+/);
+  return urlMatch ? urlMatch[0] : null;
 }
 
 // --- PROVIDERS ---
@@ -89,5 +96,93 @@ export class StabilityAIProvider implements ImageGenerationProvider {
       '4:5': { width: 512, height: 640 },
     };
     return dimensions[aspectRatio][side];
+  }
+}
+
+// 4. OpenRouter Provider
+export class OpenRouterImageProvider implements ImageGenerationProvider {
+  private apiKey: string;
+  private apiHost: string = 'https://openrouter.ai/api/v1';
+  private siteUrl: string;
+  private siteName: string;
+
+  constructor(apiKey: string) {
+    if (!apiKey) {
+      throw new Error('OpenRouter API key is required.');
+    }
+    this.apiKey = apiKey;
+    this.siteUrl = process.env.APP_URL || 'https://shopify-marketing-ai.app';
+    this.siteName = process.env.APP_NAME || 'Shopify Marketing AI';
+  }
+
+  async generate(params: ImageGenerationParams): Promise<string> {
+    logger.info('Generating image with OpenRouter...', { prompt: params.prompt, model: params.model });
+
+    // Use a widely available model if not specified.
+    const model = params.model || 'openai/gpt-5-image-mini';
+
+    try {
+      // OpenRouter image generation uses /chat/completions for multimodal models
+      const response = await axios.post(
+        `${this.apiHost}/chat/completions`,
+        {
+          model: model,
+          messages: [
+            { role: 'user', content: params.prompt }
+          ],
+          max_tokens: 1000,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'HTTP-Referer': this.siteUrl,
+            'X-Title': this.siteName,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = response.data;
+
+      // Check for structured image response (e.g. GPT-5 Image models)
+      if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+        const message = data.choices[0].message;
+
+        // Custom OpenRouter/OpenAI Image format in chat completion
+        if (message.images && Array.isArray(message.images) && message.images.length > 0) {
+          const imageObj = message.images[0];
+          if (imageObj.image_url && imageObj.image_url.url) {
+            logger.info('OpenRouter image generation successful (structured field)');
+            return imageObj.image_url.url;
+          }
+        }
+
+        // Fallback: Check content string for markdown or raw URL
+        const content = message.content;
+        if (content) {
+          const url = extractUrl(content);
+          if (url) {
+            logger.info('OpenRouter image generation successful (extracted from content)');
+            return url;
+          }
+        }
+
+        logger.warn('No URL found in image generation response', { response: 'HIDDEN_BASE64' });
+        return `https://placehold.co/512x512/ff0000/ffffff?text=${encodeURIComponent('Generation Failed')}`;
+      } else {
+        throw new Error('No content returned from OpenRouter');
+      }
+
+    } catch (error: any) {
+      logger.error('OpenRouter image generation failed', {
+        error: error.message,
+        response: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  private getResolution(aspectRatio: ImageGenerationParams['aspectRatio'] = '1:1'): string {
+    return '1024x1024';
   }
 }

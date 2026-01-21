@@ -11,6 +11,7 @@ import {
   ImageGenerationParams,
   PlaceholderProvider,
   StabilityAIProvider,
+  OpenRouterImageProvider,
 } from './ai/image-generation';
 import {
   AIProvider,
@@ -74,9 +75,25 @@ class AIService {
           this.imageProvider = new PlaceholderProvider();
         }
         break;
+      case 'openrouter':
+        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        if (openRouterKey) {
+          this.imageProvider = new OpenRouterImageProvider(openRouterKey);
+          logger.info('OpenRouter Image provider initialized.');
+        } else {
+          logger.error('OPENROUTER_API_KEY is missing. Falling back to placeholder provider.');
+          this.imageProvider = new PlaceholderProvider();
+        }
+        break;
       case 'placeholder':
       default:
-        this.imageProvider = new PlaceholderProvider();
+        // Default to OpenRouter if available with key, otherwise placeholder
+        if (process.env.OPENROUTER_API_KEY) {
+          this.imageProvider = new OpenRouterImageProvider(process.env.OPENROUTER_API_KEY);
+          logger.info('Defaulting to OpenRouter Image provider.');
+        } else {
+          this.imageProvider = new PlaceholderProvider();
+        }
         break;
     }
   }
