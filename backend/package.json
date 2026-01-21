@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend API for Shopify Marketing Automation AI",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "dev": "tsc && node dist/backend/src/index.js",
     "dev:watch": "tsc -w & nodemon dist/backend/src/index.js",
