@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { api } from '@/lib/api';
 import { signIn } from 'next-auth/react';
+import Link from 'next/link';
 import {
   EyeIcon,
   EyeSlashIcon,
