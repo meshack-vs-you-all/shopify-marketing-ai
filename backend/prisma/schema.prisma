@@ -598,3 +598,92 @@ model PromptTemplate {
   @@index([taskType, isActive])
   @@map("prompt_templates")
 }
+
+// ============================================
+// META PUBLISHING (Instagram, Facebook, WhatsApp)
+// ============================================
+
+// Meta connected accounts (pages, IG accounts)
+model MetaAccount {
+  id              String          @id @default(cuid())
+  type            MetaAccountType
+  externalId      String          // Meta's account ID
+  name            String
+  accessToken     String          // Page/account token (should be encrypted in prod)
+  tokenExpiresAt  DateTime?
+  metadata        Json?           // Profile pic URL, follower count, etc.
+  isActive        Boolean         @default(true)
+  
+  posts           MetaPost[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@unique([type, externalId])
+  @@index([isActive])
+  @@map("meta_accounts")
+}
+
+enum MetaAccountType {
+  FACEBOOK_PAGE
+  INSTAGRAM_BUSINESS
+  WHATSAPP_BUSINESS
+}
+
+// Scheduled/published posts to Meta platforms
+model MetaPost {
+  id              String          @id @default(cuid())
+  accountId       String
+  account         MetaAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  // Content
+  caption         String          @db.Text
+  mediaUrls       String[]        // Array of media URLs
+  mediaType       MetaMediaType   @default(IMAGE)
+  
+  // AI Generation metadata
+  aiGenerated     Boolean         @default(false)
+  aiModel         String?
+  aiPromptHints   Json?           // { tone, length, productId, etc. }
+  
+  // Scheduling
+  status          MetaPostStatus  @default(DRAFT)
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  
+  // Meta response
+  externalId      String?         // Published post ID from Meta
+  containerIds    String[]        // For Instagram container workflow
+  
+  // Tracking
+  campaignId      String?
+  idempotencyKey  String?         @unique
+  
+  // Error handling
+  lastError       String?
+  retryCount      Int             @default(0)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@index([accountId, status])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("meta_posts")
+}
+
+enum MetaMediaType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  REEL
+}
+
+enum MetaPostStatus {
+  DRAFT
+  PENDING
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
