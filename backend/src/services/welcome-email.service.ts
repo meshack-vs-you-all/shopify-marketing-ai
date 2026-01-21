@@ -21,6 +21,8 @@ export interface WelcomeEmailConfig {
     delayMs?: number; // Delay in milliseconds (e.g., 24 hours = 86400000)
     enableFollowUp?: boolean;
     followUpDelayMs?: number; // Default 3 days
+    useAI?: boolean; // Use AI for personalization
+    storeName?: string; // Store name for placeholders
 }
 
 export interface WelcomeEmailResult {
