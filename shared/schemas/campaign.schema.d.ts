@@ -72,13 +72,13 @@ export declare const updateCampaignSchema: z.ZodObject<{
     dailyBudget: z.ZodOptional<z.ZodNumber>;
     objective: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    status?: "ACTIVE" | "PAUSED" | "DRAFT" | "PENDING" | "ARCHIVED" | undefined;
+    status?: "DRAFT" | "PENDING" | "ACTIVE" | "PAUSED" | "ARCHIVED" | undefined;
     name?: string | undefined;
     budget?: number | undefined;
     dailyBudget?: number | undefined;
     objective?: string | undefined;
 }, {
-    status?: "ACTIVE" | "PAUSED" | "DRAFT" | "PENDING" | "ARCHIVED" | undefined;
+    status?: "DRAFT" | "PENDING" | "ACTIVE" | "PAUSED" | "ARCHIVED" | undefined;
     name?: string | undefined;
     budget?: number | undefined;
     dailyBudget?: number | undefined;
@@ -123,17 +123,17 @@ export declare const rejectRequestSchema: z.ZodObject<{
 export declare const campaignQuerySchema: z.ZodObject<{
     platform: z.ZodOptional<z.ZodEnum<["META", "GOOGLE_ADS", "EMAIL"]>>;
     status: z.ZodOptional<z.ZodEnum<["DRAFT", "PENDING", "ACTIVE", "PAUSED", "ARCHIVED"]>>;
-    limit: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
-    offset: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+    limit: z.ZodEffects<z.ZodDefault<z.ZodOptional<z.ZodNumber>>, number, unknown>;
+    offset: z.ZodEffects<z.ZodDefault<z.ZodOptional<z.ZodNumber>>, number, unknown>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
     offset: number;
-    status?: "ACTIVE" | "PAUSED" | "DRAFT" | "PENDING" | "ARCHIVED" | undefined;
+    status?: "DRAFT" | "PENDING" | "ACTIVE" | "PAUSED" | "ARCHIVED" | undefined;
     platform?: "META" | "GOOGLE_ADS" | "EMAIL" | undefined;
 }, {
-    limit?: number | undefined;
-    status?: "ACTIVE" | "PAUSED" | "DRAFT" | "PENDING" | "ARCHIVED" | undefined;
+    limit?: unknown;
+    status?: "DRAFT" | "PENDING" | "ACTIVE" | "PAUSED" | "ARCHIVED" | undefined;
     platform?: "META" | "GOOGLE_ADS" | "EMAIL" | undefined;
-    offset?: number | undefined;
+    offset?: unknown;
 }>;
 //# sourceMappingURL=campaign.schema.d.ts.map
