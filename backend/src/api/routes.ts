@@ -17,6 +17,7 @@ import shopifyWebhooksRoutes from './shopify-webhooks.routes';
 import metaPublishingRoutes from './meta-publishing.routes';
 
 import unsubscribeRoutes from './unsubscribe.routes';
+import blogRoutes from './blog.routes';
 
 const router: Router = Router();
 
@@ -30,6 +31,9 @@ router.use('/auth', authRoutes);
 
 // Unsubscribe (Public)
 router.use('/unsubscribe', unsubscribeRoutes);
+
+// Blog Routes (Public Reads / Protected Writes)
+router.use('/blog', blogRoutes);
 
 // AI Routes (protected)
 // AI Routes (temporarily public for testing)
