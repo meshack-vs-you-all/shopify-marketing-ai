@@ -10,7 +10,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   // Define public paths where sidebar should NOT be shown even if authenticated
   const publicPaths = ['/', '/login', '/signup', '/setup-guide'];
-  const isPublicPath = publicPaths.includes(pathname);
+  const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/blog');
 
   if (!isAuthenticated || isPublicPath) {
     return <main className="min-h-screen bg-cream-100">{children}</main>;
